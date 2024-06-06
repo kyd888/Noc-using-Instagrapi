@@ -56,6 +56,7 @@ def stop_monitoring():
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
+    print(f"Returning comments data: {comments_data}")
     return jsonify(comments_data)
 
 @app.route('/get_post_urls', methods=['GET'])
