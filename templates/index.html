@@ -76,9 +76,12 @@
                     setTimeout(function() {
                         $.get('/get_comments', function(data) {
                             $('#comments').empty();
-                            data.forEach(function(comment) {
-                                $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
-                            });
+                            for (let postId in data) {
+                                $('#comments').append('<h3>Comments for post ' + postId + ':</h3>');
+                                data[postId].forEach(function(comment) {
+                                    $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
+                                });
+                            }
                             $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
                         });
 
