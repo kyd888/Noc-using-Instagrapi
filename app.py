@@ -52,15 +52,21 @@ def get_comments_data():
 
 def search_user(username):
     user_id = cl.user_id_from_username(username)
+    print(f"User ID for {username} is {user_id}")
     return user_id
 
 def get_latest_post(user_id):
     posts = cl.user_medias(user_id, amount=1)
+    if posts:
+        print(f"Latest post ID: {posts[0].pk}")
+    else:
+        print("No posts found.")
     return posts[0] if posts else None
 
 def get_comments(media_id):
     comments = cl.media_comments(media_id)
     comments_list = [(comment.user.username, comment.text, comment.created_at) for comment in comments]
+    print(f"Comments for media ID {media_id}: {comments_list}")
     return comments_list
 
 def monitor_new_posts(user_id, check_interval=60):
