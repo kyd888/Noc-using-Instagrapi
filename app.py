@@ -99,7 +99,8 @@ def monitor_new_posts(user_id, username):
         for post in post_urls:
             post_code = post['url'].split('/')[-2]
             post_media_id = cl.media_id(post_code)
-            comments_data[post['id']] = get_comments(post_media_id)
+            new_comments = get_comments(post_media_id)
+            comments_data[post['id']] = new_comments
             refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
             refresh_messages.append(refresh_message)
             print(refresh_message)
