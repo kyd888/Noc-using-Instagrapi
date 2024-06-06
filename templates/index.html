@@ -16,32 +16,49 @@
         <button type="submit">Start Monitoring</button>
         <button type="button" id="stop-monitoring">Stop Monitoring</button>
     </form>
+
+    <h2>Status</h2>
+    <div id="status">Not monitoring.</div>
+
     <h2>Comments</h2>
     <div id="comments"></div>
 
     <script>
+        let monitoring = false;
+
         $(document).ready(function() {
             $('#monitor-form').submit(function(event) {
                 event.preventDefault();
                 $.post('/start_monitoring', $(this).serialize(), function(response) {
                     alert(response.status);
+                    $('#status').text('Monitoring has started.');
+                    monitoring = true;
+                    checkStatus();
                 });
             });
 
             $('#stop-monitoring').click(function() {
                 $.post('/stop_monitoring', function(response) {
                     alert(response.status);
+                    $('#status').text('Monitoring has stopped.');
+                    monitoring = false;
                 });
             });
 
-            setInterval(function() {
-                $.get('/get_comments', function(data) {
-                    $('#comments').empty();
-                    data.forEach(function(comment) {
-                        $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
-                    });
-                });
-            }, 5000);
+            function checkStatus() {
+                if (monitoring) {
+                    setTimeout(function() {
+                        $.get('/get_comments', function(data) {
+                            $('#comments').empty();
+                            data.forEach(function(comment) {
+                                $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
+                            });
+                            $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
+                        });
+                        checkStatus();
+                    }, 5000);
+                }
+            }
         });
     </script>
 </body>
