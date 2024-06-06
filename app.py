@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import uuid
 from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
 from threading import Thread
@@ -84,12 +85,20 @@ def monitor_new_posts(user_id, username):
         if latest_post and latest_post.pk != last_post_id:
             last_post_id = latest_post.pk
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
-            post_urls.append(post_url)
+            unique_id = str(uuid.uuid4().int)[:4]
+            post_urls.append({'url': post_url, 'id': unique_id})
             comments_data = get_comments(latest_post.pk)
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
         print(f"Sleeping for {sleep_interval} seconds.")
         time.sleep(sleep_interval)
+
+        # Refresh comments for each post URL
+        for post in post_urls:
+            post_code = post['url'].split('/')[-2]
+            post_media_id = cl.media_id(post_code)
+            new_comments = get_comments(post_media_id)
+            comments_data.extend(new_comments)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
