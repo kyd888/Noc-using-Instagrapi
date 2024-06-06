@@ -99,15 +99,20 @@ def get_latest_post(user_id):
         print("No posts found.")
     return posts[0] if posts else None
 
-def get_comments(media_id, limit=20):
+def get_one_comment(media_id):
     try:
-        comments = cl.media_comments(media_id, amount=limit)
-        comments_list = [(comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S')) for comment in comments]
-        print(f"Fetched {len(comments_list)} comments for media ID {media_id}")
-        return comments_list
+        comments = cl.media_comments(media_id, amount=1)
+        if comments:
+            comment = comments[0]
+            comment_data = (comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S'))
+            print(f"Fetched one comment for media ID {media_id}: {comment_data}")
+            return comment_data
+        else:
+            print(f"No comments found for media ID {media_id}")
+            return None
     except Exception as e:
         print(f"Error fetching comments for media ID {media_id}: {e}")
-        return []
+        return None
 
 def monitor_new_posts(user_id, username):
     global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
@@ -119,12 +124,12 @@ def monitor_new_posts(user_id, username):
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls.append({'url': post_url, 'id': unique_id})
-            comments = get_comments(latest_post.pk)
-            if comments:
-                comments_data[unique_id] = comments
-                print(f"Stored comments for post {unique_id}: {comments}")
+            comment = get_one_comment(latest_post.pk)
+            if comment:
+                comments_data[unique_id] = [comment]
+                print(f"Stored comment for post {unique_id}: {comment}")
             else:
-                print(f"No comments found for post {unique_id}")
+                print(f"No comment found for post {unique_id}")
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
         print(f"Sleeping for {sleep_interval} seconds.")
@@ -134,14 +139,14 @@ def monitor_new_posts(user_id, username):
             post_code = post['url'].split('/')[-2]
             try:
                 post_media_id = cl.media_pk_from_code(post_code)
-                new_comments = get_comments(post_media_id)
-                if new_comments:
-                    comments_data[post['id']] = new_comments
-                    refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                new_comment = get_one_comment(post_media_id)
+                if new_comment:
+                    comments_data[post['id']] = [new_comment]
+                    refresh_message = f"Refreshing comment for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
                     refresh_messages.append(refresh_message)
                     print(refresh_message)
                 else:
-                    print(f"No new comments found for post {post['id']}")
+                    print(f"No new comment found for post {post['id']}")
             except Exception as e:
                 print(f"Error fetching media ID for post code {post_code}: {e}")
 
