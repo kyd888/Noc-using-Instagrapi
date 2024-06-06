@@ -40,7 +40,9 @@ def start_monitoring():
     global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
     target_username = request.form['target_username']
     user_id = search_user(target_username)
-    
+    if user_id is None:
+        return jsonify({'status': 'User not found or error occurred'}), 404
+
     monitoring = True
     refresh_messages.clear()
     comments_data.clear()
@@ -66,9 +68,13 @@ def get_post_urls():
     return jsonify({'post_urls': post_urls, 'last_refresh_time': last_refresh_time, 'refresh_messages': refresh_messages})
 
 def search_user(username):
-    user_id = cl.user_id_from_username(username)
-    print(f"User ID for {username} is {user_id}")
-    return user_id
+    try:
+        user_id = cl.user_id_from_username(username)
+        print(f"User ID for {username} is {user_id}")
+        return user_id
+    except TypeError as e:
+        print(f"Error fetching user ID for {username}: {e}")
+        return None
 
 def get_latest_post(user_id):
     posts = cl.user_medias(user_id, amount=1)
