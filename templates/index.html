@@ -93,10 +93,10 @@
                 }
             }
 
-            function updatePostUrls(urls) {
+            function updatePostUrls(postUrls) {
                 $('#latest_post_urls').empty();
-                urls.forEach(function(url) {
-                    $('#latest_post_urls').append('<p><a href="' + url + '" target="_blank">' + url + '</a></p>');
+                postUrls.forEach(function(post) {
+                    $('#latest_post_urls').append('<p><a href="' + post.url + '" target="_blank">' + post.url + '</a> (' + post.id + ')</p>');
                 });
             }
         });
