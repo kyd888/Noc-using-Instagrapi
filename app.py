@@ -7,7 +7,7 @@ from instagrapi import Client
 from threading import Thread
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a secure key
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 cl = Client()
 monitoring = False
 comments_data = {}
