@@ -26,6 +26,7 @@
 
     <h2>Latest Post URLs</h2>
     <div id="latest_post_urls">No posts yet.</div>
+    <div id="last_refresh_time">Last refresh time: Not yet refreshed.</div>
 
     <h2>Comments</h2>
     <div id="comments"></div>
@@ -80,6 +81,7 @@
 
                         $.get('/get_post_urls', function(data) {
                             updatePostUrls(data.post_urls);
+                            $('#last_refresh_time').text('Last refresh time: ' + data.last_refresh_time);
                         });
 
                         checkStatus();
