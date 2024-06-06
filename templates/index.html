@@ -28,6 +28,9 @@
     <div id="latest_post_urls">No posts yet.</div>
     <div id="last_refresh_time">Last refresh time: Not yet refreshed.</div>
 
+    <h2>Refresh Messages</h2>
+    <div id="refresh_messages"></div>
+
     <h2>Comments</h2>
     <div id="comments"></div>
 
@@ -86,6 +89,7 @@
                             } else {
                                 $('#last_refresh_time').text('Last refresh time: Not yet refreshed.');
                             }
+                            updateRefreshMessages(data.refresh_messages);
                         });
 
                         checkStatus();
@@ -97,6 +101,13 @@
                 $('#latest_post_urls').empty();
                 postUrls.forEach(function(post) {
                     $('#latest_post_urls').append('<p><a href="' + post.url + '" target="_blank">' + post.url + '</a> (' + post.id + ')</p>');
+                });
+            }
+
+            function updateRefreshMessages(messages) {
+                $('#refresh_messages').empty();
+                messages.forEach(function(message) {
+                    $('#refresh_messages').append('<p>' + message + '</p>');
                 });
             }
         });
