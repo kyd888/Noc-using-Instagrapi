@@ -81,7 +81,11 @@
 
                         $.get('/get_post_urls', function(data) {
                             updatePostUrls(data.post_urls);
-                            $('#last_refresh_time').text('Last refresh time: ' + data.last_refresh_time);
+                            if (data.last_refresh_time) {
+                                $('#last_refresh_time').text('Last refresh time: ' + data.last_refresh_time);
+                            } else {
+                                $('#last_refresh_time').text('Last refresh time: Not yet refreshed.');
+                            }
                         });
 
                         checkStatus();
