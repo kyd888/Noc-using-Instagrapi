@@ -5,6 +5,7 @@ import uuid
 from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
 from threading import Thread
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -67,12 +68,26 @@ def get_comments_data():
 def get_post_urls():
     return jsonify({'post_urls': post_urls, 'last_refresh_time': last_refresh_time, 'refresh_messages': refresh_messages})
 
+def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
+    delay = initial_delay
+    for i in range(retries):
+        try:
+            return func()
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}. Retrying in {delay} seconds.")
+            time.sleep(delay)
+            delay *= 2
+    raise Exception("Maximum retries reached")
+
+def get_user_id_with_retry(username):
+    return retry_with_exponential_backoff(lambda: cl.user_id_from_username(username))
+
 def search_user(username):
     try:
-        user_id = cl.user_id_from_username(username)
+        user_id = get_user_id_with_retry(username)
         print(f"User ID for {username} is {user_id}")
         return user_id
-    except TypeError as e:
+    except Exception as e:
         print(f"Error fetching user ID for {username}: {e}")
         return None
 
