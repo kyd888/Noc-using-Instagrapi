@@ -24,6 +24,9 @@
     <h2>Status</h2>
     <div id="status">Not monitoring.</div>
 
+    <h2>Latest Post ID</h2>
+    <div id="latest_post_id">No post ID yet.</div>
+
     <h2>Comments</h2>
     <div id="comments"></div>
 
@@ -49,6 +52,7 @@
                     alert(response.status);
                     if (response.status === 'Monitoring started') {
                         $('#status').text('Monitoring has started.');
+                        $('#latest_post_id').text('Latest Post ID: ' + response.latest_post_id);
                         monitoring = true;
                         checkStatus();
                     }
@@ -73,6 +77,11 @@
                             });
                             $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
                         });
+                        
+                        $.get('/get_latest_post_id', function(data) {
+                            $('#latest_post_id').text('Latest Post ID: ' + data.latest_post_id);
+                        });
+                        
                         checkStatus();
                     }, 5000);
                 }
