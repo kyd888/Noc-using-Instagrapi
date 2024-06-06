@@ -24,8 +24,8 @@
     <h2>Status</h2>
     <div id="status">Not monitoring.</div>
 
-    <h2>Latest Post URL</h2>
-    <div id="latest_post_url">No post yet.</div>
+    <h2>Latest Post URLs</h2>
+    <div id="latest_post_urls">No posts yet.</div>
 
     <h2>Comments</h2>
     <div id="comments"></div>
@@ -52,7 +52,7 @@
                     alert(response.status);
                     if (response.status === 'Monitoring started') {
                         $('#status').text('Monitoring has started.');
-                        $('#latest_post_url').html('<a href="' + response.latest_post_url + '" target="_blank">' + response.latest_post_url + '</a>');
+                        updatePostUrls(response.post_urls);
                         monitoring = true;
                         checkStatus();
                     }
@@ -77,14 +77,21 @@
                             });
                             $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
                         });
-                        
-                        $.get('/get_latest_post_url', function(data) {
-                            $('#latest_post_url').html('<a href="' + data.latest_post_url + '" target="_blank">' + data.latest_post_url + '</a>');
+
+                        $.get('/get_post_urls', function(data) {
+                            updatePostUrls(data.post_urls);
                         });
-                        
+
                         checkStatus();
                     }, 5000);
                 }
+            }
+
+            function updatePostUrls(urls) {
+                $('#latest_post_urls').empty();
+                urls.forEach(function(url) {
+                    $('#latest_post_urls').append('<p><a href="' + url + '" target="_blank">' + url + '</a></p>');
+                });
             }
         });
     </script>
