@@ -41,6 +41,8 @@ def start_monitoring():
     
     monitoring = True
     refresh_messages.clear()
+    comments_data.clear()
+    post_urls.clear()
     thread = Thread(target=monitor_new_posts, args=(user_id, target_username))
     thread.start()
     
@@ -75,7 +77,7 @@ def get_latest_post(user_id):
 
 def get_comments(media_id, limit=20):
     comments = cl.media_comments(media_id, amount=limit)
-    comments_list = [(comment.user.username, comment.text, comment.created_at) for comment in comments]
+    comments_list = [(comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S')) for comment in comments]
     print(f"Comments for media ID {media_id}: {comments_list}")
     return comments_list
 
@@ -99,8 +101,7 @@ def monitor_new_posts(user_id, username):
         for post in post_urls:
             post_code = post['url'].split('/')[-2]
             post_media_id = cl.media_id(post_code)
-            new_comments = get_comments(post_media_id)
-            comments_data[post['id']] = new_comments
+            comments_data[post['id']] = get_comments(post_media_id)
             refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
             refresh_messages.append(refresh_message)
             print(refresh_message)
