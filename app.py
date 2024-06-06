@@ -80,7 +80,7 @@ def get_comments(media_id, limit=20):
     try:
         comments = cl.media_comments(media_id, amount=limit)
         comments_list = [(comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S')) for comment in comments]
-        print(f"Comments for media ID {media_id}: {comments_list}")
+        print(f"Fetched {len(comments_list)} comments for media ID {media_id}")
         return comments_list
     except Exception as e:
         print(f"Error fetching comments for media ID {media_id}: {e}")
@@ -96,7 +96,10 @@ def monitor_new_posts(user_id, username):
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls.append({'url': post_url, 'id': unique_id})
-            comments_data[unique_id] = get_comments(latest_post.pk)
+            comments = get_comments(latest_post.pk)
+            if comments:
+                comments_data[unique_id] = comments
+            print(f"Stored comments for post {unique_id}")
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
         print(f"Sleeping for {sleep_interval} seconds.")
