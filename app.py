@@ -24,10 +24,13 @@ def login():
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
     try:
+        # Ensure the credentials are being passed correctly
+        print(f"Attempting to login with username: {insta_username}")
         cl.login(insta_username, insta_password)
         session['logged_in'] = True
         return jsonify({'status': 'Login successful'})
     except Exception as e:
+        print(f"Login failed: {e}")
         return jsonify({'status': f'Login failed: {str(e)}'})
 
 @app.route('/start_monitoring', methods=['POST'])
@@ -99,7 +102,9 @@ def monitor_new_posts(user_id, username):
             comments = get_comments(latest_post.pk)
             if comments:
                 comments_data[unique_id] = comments
-            print(f"Stored comments for post {unique_id}")
+                print(f"Stored comments for post {unique_id}: {comments}")
+            else:
+                print(f"No comments found for post {unique_id}")
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
         print(f"Sleeping for {sleep_interval} seconds.")
@@ -115,6 +120,8 @@ def monitor_new_posts(user_id, username):
                 refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
                 refresh_messages.append(refresh_message)
                 print(refresh_message)
+            else:
+                print(f"No new comments found for post {post['id']}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
