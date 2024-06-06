@@ -6,11 +6,15 @@
 </head>
 <body>
     <h1>Instagram Monitor</h1>
-    <form id="monitor-form">
+    <form id="login-form">
         <label for="insta_username">Instagram Username:</label><br>
         <input type="text" id="insta_username" name="insta_username"><br><br>
         <label for="insta_password">Instagram Password:</label><br>
         <input type="password" id="insta_password" name="insta_password"><br><br>
+        <button type="submit">Login</button>
+    </form>
+    
+    <form id="monitor-form" style="display:none;">
         <label for="target_username">Target Username:</label><br>
         <input type="text" id="target_username" name="target_username"><br><br>
         <button type="submit">Start Monitoring</button>
@@ -27,13 +31,27 @@
         let monitoring = false;
 
         $(document).ready(function() {
+            $('#login-form').submit(function(event) {
+                event.preventDefault();
+                $.post('/login', $(this).serialize(), function(response) {
+                    alert(response.status);
+                    if (response.status === 'Login successful') {
+                        $('#login-form').hide();
+                        $('#monitor-form').show();
+                        $('#status').text('Logged in. You can now start monitoring.');
+                    }
+                });
+            });
+
             $('#monitor-form').submit(function(event) {
                 event.preventDefault();
                 $.post('/start_monitoring', $(this).serialize(), function(response) {
                     alert(response.status);
-                    $('#status').text('Monitoring has started.');
-                    monitoring = true;
-                    checkStatus();
+                    if (response.status === 'Monitoring started') {
+                        $('#status').text('Monitoring has started.');
+                        monitoring = true;
+                        checkStatus();
+                    }
                 });
             });
 
