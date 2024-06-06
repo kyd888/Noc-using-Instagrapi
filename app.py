@@ -113,15 +113,18 @@ def monitor_new_posts(user_id, username):
         # Refresh comments for each post URL
         for post in post_urls:
             post_code = post['url'].split('/')[-2]
-            post_media_id = cl.media_id(post_code)
-            new_comments = get_comments(post_media_id)
-            if new_comments:
-                comments_data[post['id']] = new_comments
-                refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
-                refresh_messages.append(refresh_message)
-                print(refresh_message)
-            else:
-                print(f"No new comments found for post {post['id']}")
+            try:
+                post_media_id = cl.media_pk_from_code(post_code)
+                new_comments = get_comments(post_media_id)
+                if new_comments:
+                    comments_data[post['id']] = new_comments
+                    refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    refresh_messages.append(refresh_message)
+                    print(refresh_message)
+                else:
+                    print(f"No new comments found for post {post['id']}")
+            except Exception as e:
+                print(f"Error fetching media ID for post code {post_code}: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
