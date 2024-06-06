@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure key
 cl = Client()
 monitoring = False
-comments_data = []
+comments_data = {}
 post_urls = []
 last_refresh_time = None
 refresh_messages = []
@@ -67,44 +67,4 @@ def search_user(username):
 
 def get_latest_post(user_id):
     posts = cl.user_medias(user_id, amount=1)
-    if posts:
-        print(f"Latest post ID: {posts[0].pk}")
-    else:
-        print("No posts found.")
-    return posts[0] if posts else None
 
-def get_comments(media_id):
-    comments = cl.media_comments(media_id)
-    comments_list = [(comment.user.username, comment.text, comment.created_at) for comment in comments]
-    print(f"Comments for media ID {media_id}: {comments_list}")
-    return comments_list
-
-def monitor_new_posts(user_id, username):
-    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
-    last_post_id = None
-    while monitoring:
-        latest_post = get_latest_post(user_id)
-        if latest_post and latest_post.pk != last_post_id:
-            last_post_id = latest_post.pk
-            post_url = f"https://www.instagram.com/p/{latest_post.code}/"
-            unique_id = str(uuid.uuid4().int)[:4]
-            post_urls.append({'url': post_url, 'id': unique_id})
-            comments_data = get_comments(latest_post.pk)
-            last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
-        sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
-        print(f"Sleeping for {sleep_interval} seconds.")
-        time.sleep(sleep_interval)
-
-        # Refresh comments for each post URL
-        for post in post_urls:
-            post_code = post['url'].split('/')[-2]
-            post_media_id = cl.media_id(post_code)
-            new_comments = get_comments(post_media_id)
-            comments_data.extend(new_comments)
-            refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
-            refresh_messages.append(refresh_message)
-            print(refresh_message)
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
