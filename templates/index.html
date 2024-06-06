@@ -79,9 +79,13 @@
                             $('#comments').empty();
                             for (let postId in data) {
                                 $('#comments').append('<h3>Comments for post ' + postId + ':</h3>');
-                                data[postId].forEach(function(comment) {
-                                    $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
-                                });
+                                if (data[postId].length > 0) {
+                                    data[postId].forEach(function(comment) {
+                                        $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
+                                    });
+                                } else {
+                                    $('#comments').append('<p>No comments yet.</p>');
+                                }
                             }
                             $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
                         });
