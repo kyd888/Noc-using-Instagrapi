@@ -9,7 +9,7 @@ app.secret_key = 'your_secret_key'  # Replace with a secure key
 cl = Client()
 monitoring = False
 comments_data = []
-latest_post_url = None
+post_urls = []
 
 @app.route('/')
 def index():
@@ -31,7 +31,7 @@ def start_monitoring():
     if not session.get('logged_in'):
         return jsonify({'status': 'Please login first'}), 403
 
-    global monitoring, latest_post_url
+    global monitoring, post_urls
     target_username = request.form['target_username']
     user_id = search_user(target_username)
     
@@ -39,7 +39,7 @@ def start_monitoring():
     thread = Thread(target=monitor_new_posts, args=(user_id, target_username))
     thread.start()
     
-    return jsonify({'status': 'Monitoring started', 'latest_post_url': latest_post_url})
+    return jsonify({'status': 'Monitoring started', 'post_urls': post_urls})
 
 @app.route('/stop_monitoring', methods=['POST'])
 def stop_monitoring():
@@ -51,9 +51,9 @@ def stop_monitoring():
 def get_comments_data():
     return jsonify(comments_data)
 
-@app.route('/get_latest_post_url', methods=['GET'])
-def get_latest_post_url():
-    return jsonify({'latest_post_url': latest_post_url})
+@app.route('/get_post_urls', methods=['GET'])
+def get_post_urls():
+    return jsonify({'post_urls': post_urls})
 
 def search_user(username):
     user_id = cl.user_id_from_username(username)
@@ -75,13 +75,14 @@ def get_comments(media_id):
     return comments_list
 
 def monitor_new_posts(user_id, username, check_interval=60):
-    global comments_data, monitoring, latest_post_url
+    global comments_data, monitoring, post_urls
     last_post_id = None
     while monitoring:
         latest_post = get_latest_post(user_id)
         if latest_post and latest_post.pk != last_post_id:
             last_post_id = latest_post.pk
-            latest_post_url = f"https://www.instagram.com/p/{latest_post.code}/"
+            post_url = f"https://www.instagram.com/p/{latest_post.code}/"
+            post_urls.append(post_url)
             comments_data = get_comments(latest_post.pk)
         time.sleep(check_interval)
 
