@@ -13,6 +13,7 @@ monitoring = False
 comments_data = []
 post_urls = []
 last_refresh_time = None
+refresh_messages = []
 
 @app.route('/')
 def index():
@@ -34,11 +35,12 @@ def start_monitoring():
     if not session.get('logged_in'):
         return jsonify({'status': 'Please login first'}), 403
 
-    global monitoring, post_urls, last_refresh_time
+    global monitoring, post_urls, last_refresh_time, refresh_messages
     target_username = request.form['target_username']
     user_id = search_user(target_username)
     
     monitoring = True
+    refresh_messages.clear()
     thread = Thread(target=monitor_new_posts, args=(user_id, target_username))
     thread.start()
     
@@ -56,7 +58,7 @@ def get_comments_data():
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
-    return jsonify({'post_urls': post_urls, 'last_refresh_time': last_refresh_time})
+    return jsonify({'post_urls': post_urls, 'last_refresh_time': last_refresh_time, 'refresh_messages': refresh_messages})
 
 def search_user(username):
     user_id = cl.user_id_from_username(username)
@@ -78,7 +80,7 @@ def get_comments(media_id):
     return comments_list
 
 def monitor_new_posts(user_id, username):
-    global comments_data, monitoring, post_urls, last_refresh_time
+    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
     last_post_id = None
     while monitoring:
         latest_post = get_latest_post(user_id)
@@ -99,6 +101,9 @@ def monitor_new_posts(user_id, username):
             post_media_id = cl.media_id(post_code)
             new_comments = get_comments(post_media_id)
             comments_data.extend(new_comments)
+            refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            refresh_messages.append(refresh_message)
+            print(refresh_message)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
