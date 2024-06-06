@@ -24,7 +24,6 @@ def login():
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
     try:
-        # Ensure the credentials are being passed correctly
         print(f"Attempting to login with username: {insta_username}")
         cl.login(insta_username, insta_password)
         session['logged_in'] = True
@@ -110,7 +109,6 @@ def monitor_new_posts(user_id, username):
         print(f"Sleeping for {sleep_interval} seconds.")
         time.sleep(sleep_interval)
 
-        # Refresh comments for each post URL
         for post in post_urls:
             post_code = post['url'].split('/')[-2]
             try:
