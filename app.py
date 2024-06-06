@@ -1,3 +1,4 @@
+import os
 import time
 from flask import Flask, render_template, request, jsonify
 from instagrapi import Client
@@ -65,5 +66,7 @@ def get_comments_data():
     return jsonify(comments_data)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+
 
