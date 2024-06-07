@@ -78,7 +78,7 @@
                             console.log('Fetched comments data:', data);
                             $('#comments').empty();
                             for (let postId in data.comments) {
-                                $('#comments').append('<h3>Comments for post ' + postId + ':</h3>');
+                                $('#comments').append('<h3>For post ' + postId + ':</h3>');
                                 if (data.comments[postId].length > 0) {
                                     data.comments[postId].forEach(function(comment) {
                                         $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
