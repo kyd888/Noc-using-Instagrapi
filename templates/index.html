@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NOC (Version {{ version }})</title>
+    <title>Instagram Monitor (Version {{ version }})</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>NOC (Version {{ version }})</h1>
+    <h1>Instagram Monitor (Version {{ version }})</h1>
     <form id="login-form" method="POST">
         <label for="insta_username">Instagram Username:</label><br>
         <input type="text" id="insta_username" name="insta_username"><br><br>
@@ -15,8 +15,8 @@
     </form>
     
     <form id="monitor-form" style="display:none;">
-        <label for="target_username">Target Username:</label><br>
-        <input type="text" id="target_username" name="target_username"><br><br>
+        <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+        <input type="text" id="target_usernames" name="target_usernames"><br><br>
         <button type="submit">Start Monitoring</button>
         <button type="button" id="stop-monitoring">Stop Monitoring</button>
     </form>
@@ -24,15 +24,7 @@
     <h2>Status</h2>
     <div id="status">Not monitoring.</div>
 
-    <h2>Latest Post URLs</h2>
-    <div id="latest_post_urls">No posts yet.</div>
-    <div id="last_refresh_time">Last refresh time: Not yet refreshed.</div>
-
-    <h2>Refresh Messages</h2>
-    <div id="refresh_messages"></div>
-
-    <h2>Comments</h2>
-    <div id="comments"></div>
+    <div id="accounts_data"></div>
 
     <script>
         let monitoring = false;
@@ -52,11 +44,11 @@
 
             $('#monitor-form').submit(function(event) {
                 event.preventDefault();
-                $.post('/start_monitoring', $(this).serialize(), function(response) {
+                const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+                $.post('/start_monitoring', { target_usernames: usernames }, function(response) {
                     alert(response.status);
                     if (response.status === 'Monitoring started') {
                         $('#status').text('Monitoring has started.');
-                        updatePostUrls(response.post_urls);
                         monitoring = true;
                         checkStatus();
                     }
@@ -75,45 +67,38 @@
                 if (monitoring) {
                     setTimeout(function() {
                         $.get('/get_comments', function(data) {
-                            console.log('Fetched comments data:', data);
-                            $('#comments').empty();
-                            for (let postId in data.comments) {
-                                $('#comments').append('<h3>For post ' + postId + ':</h3>');
-                                if (data.comments[postId].length > 0) {
-                                    data.comments[postId].forEach(function(comment) {
-                                        $('#comments').append('<p>User: ' + comment[0] + '<br>Comment: ' + comment[1] + '<br>Time: ' + comment[2] + '</p><hr>');
+                            $('#accounts_data').empty();
+                            for (let username in data.comments) {
+                                $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
+                                const posts = data.comments[username];
+                                posts.forEach(post => {
+                                    $('#accounts_data').append(`<h4>Post ${post.id}</h4>`);
+                                    post.comments.forEach(comment => {
+                                        $('#accounts_data').append(`<p>User: ${comment[0]}<br>Comment: ${comment[1]}<br>Time: ${comment[2]}</p><hr>`);
                                     });
-                                } else {
-                                    $('#comments').append('<p>No comments yet.</p>');
-                                }
+                                });
                             }
-                            $('#status').text('Still monitoring... ' + new Date().toLocaleTimeString());
                         });
 
                         $.get('/get_post_urls', function(data) {
-                            updatePostUrls(data.post_urls);
-                            if (data.last_refresh_time) {
-                                $('#last_refresh_time').text('Last refresh time: ' + data.last_refresh_time);
-                            } else {
-                                $('#last_refresh_time').text('Last refresh time: Not yet refreshed.');
+                            for (let username in data.post_urls) {
+                                $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
+                                const urls = data.post_urls[username];
+                                urls.forEach(post => {
+                                    $('#accounts_data').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+                                });
                             }
-                            updateRefreshMessages(data.refresh_messages);
+                            for (let username in data.last_refresh_time) {
+                                $('#accounts_data').append(`<h4>Last refresh time for ${username}: ${data.last_refresh_time[username]}</h4>`);
+                            }
+                            for (let username in data.refresh_messages) {
+                                $('#accounts_data').append(`<h4>Refresh message for ${username}: ${data.refresh_messages[username]}</h4>`);
+                            }
                         });
 
                         checkStatus();
                     }, 5000);
                 }
-            }
-
-            function updatePostUrls(postUrls) {
-                $('#latest_post_urls').empty();
-                postUrls.forEach(function(post) {
-                    $('#latest_post_urls').append('<p><a href="' + post.url + '" target="_blank">' + post.url + '</a> (' + post.id + ')</p>');
-                });
-            }
-
-            function updateRefreshMessages(message) {
-                $('#refresh_messages').text(message); // Set the message as text
             }
         });
     </script>
