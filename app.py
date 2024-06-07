@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.0.0"
+app_version = "1.0.1"
 
 cl = Client()
 monitoring = False
@@ -105,17 +105,17 @@ def get_latest_post(user_id):
 
 def get_one_comment(media_id):
     try:
-        comments = cl.media_comments(media_id, amount=1)
+        comments = client.media_comments(media_id, amount=1)
         if comments:
             comment = comments[0]
             comment_data = (comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S'))
-            print(f"Fetched one comment for media ID {media_id}: {comment_data} (App Version: {app_version})")
+            print(f"Fetched one comment for media ID {media_id}: {comment_data}")
             return comment_data
         else:
-            print(f"No comments found for media ID {media_id} (App Version: {app_version})")
+            print(f"No comments found for media ID {media_id}")
             return None
     except Exception as e:
-        print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
+        print(f"Error fetching comments for media ID {media_id}: {e}")
         return None
 
 def monitor_new_posts(user_id, username):
