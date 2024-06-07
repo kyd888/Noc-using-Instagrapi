@@ -111,11 +111,8 @@
                 });
             }
 
-            function updateRefreshMessages(messages) {
-                $('#refresh_messages').empty();
-                messages.forEach(function(message) {
-                    $('#refresh_messages').append('<p>' + message + '</p>');
-                });
+            function updateRefreshMessages(message) {
+                $('#refresh_messages').text(message); // Set the message as text
             }
         });
     </script>
