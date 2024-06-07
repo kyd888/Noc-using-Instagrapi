@@ -108,7 +108,12 @@ def get_one_comment(media_id):
         comments = cl.media_comments(media_id, amount=1)
         if comments:
             comment = comments[0]
-            comment_data = (comment.user.username, comment.text, comment.created_at.strftime('%Y-%m-%d %H:%M:%S'))
+            print(f"Fetched comment attributes: {comment.__dict__} (App Version: {app_version})")
+            comment_data = (
+                comment.user.username, 
+                comment.text, 
+                comment.created_at if hasattr(comment, 'created_at') else 'N/A'
+            )
             print(f"Fetched one comment for media ID {media_id}: {comment_data} (App Version: {app_version})")
             return comment_data
         else:
