@@ -6,7 +6,7 @@
 </head>
 <body>
     <h1>Instagram Monitor (Version {{ version }})</h1>
-    <form id="login-form">
+    <form id="login-form" method="POST">
         <label for="insta_username">Instagram Username:</label><br>
         <input type="text" id="insta_username" name="insta_username"><br><br>
         <label for="insta_password">Instagram Password:</label><br>
@@ -113,4 +113,11 @@
 
             function updateRefreshMessages(messages) {
                 $('#refresh_messages').empty();
-               
+                messages.forEach(function(message) {
+                    $('#refresh_messages').append('<p>' + message + '</p>');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
