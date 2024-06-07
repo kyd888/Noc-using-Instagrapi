@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.0.7"
+app_version = "1.0.8"
 
 cl = Client()
 monitoring = False
@@ -161,8 +161,9 @@ def monitor_new_posts(user_id, username):
                 if new_comment:
                     comments_data[post['id']] = [new_comment]
                     refresh_message = f"Refreshing comment for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
+                    refresh_messages.clear()
                     refresh_messages.append(refresh_message)
-                    print(refresh_message)
+                    print(refresh_message)            
                 else:
                     print(f"No new comment found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
