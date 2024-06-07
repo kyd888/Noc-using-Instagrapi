@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.0.6"
+app_version = "1.0.7"
 
 cl = Client()
 monitoring = False
@@ -71,7 +71,12 @@ def get_comments_data():
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
-    return jsonify({'post_urls': post_urls, 'last_refresh_time': last_refresh_time, 'refresh_messages': refresh_messages, 'version': app_version})
+    return jsonify({
+        'post_urls': post_urls, 
+        'last_refresh_time': last_refresh_time, 
+        'refresh_messages': ' '.join(refresh_messages),  # Join messages with a space separator
+        'version': app_version
+    })
 
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
