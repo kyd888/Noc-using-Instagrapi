@@ -11,14 +11,14 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.0"
+app_version = "1.0.8"
 
 cl = Client()
 monitoring = False
-comments_data = {}
-post_urls = []
-last_refresh_time = None
-refresh_messages = []
+comments_data = {}  # Key: account username, Value: comments data
+post_urls = {}     # Key: account username, Value: post URLs
+last_refresh_time = {}
+refresh_messages = {}
 max_cycles = 100  # Set a maximum number of monitoring cycles
 
 @app.route('/')
@@ -44,19 +44,21 @@ def start_monitoring():
         return jsonify({'status': 'Please login first', 'version': app_version}), 403
 
     global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
-    target_username = request.form['target_username']
-    user_id = search_user(target_username)
-    if user_id is None:
-        return jsonify({'status': 'User not found or error occurred', 'version': app_version}), 404
+    target_usernames = request.form.getlist('target_usernames')  # List of usernames
+    for username in target_usernames:
+        user_id = search_user(username)
+        if user_id is None:
+            return jsonify({'status': f'User {username} not found or error occurred', 'version': app_version}), 404
 
-    monitoring = True
-    refresh_messages.clear()
-    comments_data.clear()
-    post_urls.clear()
-    thread = Thread(target=monitor_new_posts, args=(user_id, target_username))
-    thread.start()
+        monitoring = True
+        refresh_messages[username] = []
+        comments_data[username] = []
+        post_urls[username] = []
+        last_refresh_time[username] = None
+        thread = Thread(target=monitor_new_posts, args=(user_id, username))
+        thread.start()
     
-    return jsonify({'status': 'Monitoring started', 'post_urls': post_urls, 'version': app_version})
+    return jsonify({'status': 'Monitoring started', 'version': app_version})
 
 @app.route('/stop_monitoring', methods=['POST'])
 def stop_monitoring():
@@ -66,7 +68,6 @@ def stop_monitoring():
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
-    print(f"Returning comments data: {comments_data} (App Version: {app_version})")
     return jsonify({'comments': comments_data, 'version': app_version})
 
 @app.route('/get_post_urls', methods=['GET'])
@@ -74,7 +75,7 @@ def get_post_urls():
     return jsonify({
         'post_urls': post_urls, 
         'last_refresh_time': last_refresh_time, 
-        'refresh_messages': refresh_messages[0] if refresh_messages else '',  # Get the latest message
+        'refresh_messages': {user: msgs[0] if msgs else '' for user, msgs in refresh_messages.items()},  # Get the latest message per user
         'version': app_version
     })
 
@@ -137,29 +138,29 @@ def monitor_new_posts(user_id, username):
             last_post_id = latest_post.pk
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
-            post_urls.append({'url': post_url, 'id': unique_id})
+            post_urls[username].append({'url': post_url, 'id': unique_id})
             comments = get_comments(latest_post.pk, 10)
             if comments:
-                comments_data[unique_id] = comments
+                comments_data[username].append({'id': unique_id, 'comments': comments})
                 print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
-            last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(60, 120)  # Randomize interval between 60 to 120 seconds
         print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
         time.sleep(sleep_interval)
         cycle_count += 1  # Increment cycle counter
 
-        for post in post_urls:
+        for post in post_urls[username]:
             post_code = post['url'].split('/')[-2]
             try:
                 post_media_id = cl.media_pk_from_code(post_code)
                 new_comments = get_comments(post_media_id, 10)
                 if new_comments:
-                    comments_data[post['id']] = new_comments
+                    comments_data[username] = new_comments
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
-                    refresh_messages.clear()
-                    refresh_messages.append(refresh_message)
+                    refresh_messages[username].clear()
+                    refresh_messages[username].append(refresh_message)
                     print(refresh_message)
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
