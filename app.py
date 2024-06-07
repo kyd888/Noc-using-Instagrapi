@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.0.9"
+app_version = "1.0.7"
 
 cl = Client()
 monitoring = False
@@ -74,7 +74,7 @@ def get_post_urls():
     return jsonify({
         'post_urls': post_urls, 
         'last_refresh_time': last_refresh_time, 
-        'refresh_messages': ' '.join(refresh_messages),  # Join messages with a space separator
+        'refresh_messages': refresh_messages[0] if refresh_messages else '',  # Get the latest message
         'version': app_version
     })
 
@@ -109,25 +109,22 @@ def get_latest_post(user_id):
         print("No posts found. (App Version: {app_version})")
     return posts[0] if posts else None
 
-def get_one_comment(media_id):
+def get_comments(media_id, count=10):
     try:
-        comments = cl.media_comments(media_id, amount=1)
+        comments = cl.media_comments(media_id, amount=count)
         if comments:
-            comment = comments[0]
-            print(f"Fetched comment attributes: {comment.__dict__} (App Version: {app_version})")
-            comment_data = (
-                comment.user.username, 
-                comment.text, 
-                comment.created_at if hasattr(comment, 'created_at') else 'N/A'
-            )
-            print(f"Fetched one comment for media ID {media_id}: {comment_data} (App Version: {app_version})")
-            return comment_data
+            comments_data = [
+                (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
+                for comment in comments
+            ]
+            print(f"Fetched {len(comments_data)} comments for media ID {media_id} (App Version: {app_version})")
+            return comments_data
         else:
             print(f"No comments found for media ID {media_id} (App Version: {app_version})")
-            return None
+            return []
     except Exception as e:
         print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
-        return None
+        return []
 
 def monitor_new_posts(user_id, username):
     global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
@@ -141,12 +138,12 @@ def monitor_new_posts(user_id, username):
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls.append({'url': post_url, 'id': unique_id})
-            comment = get_one_comment(latest_post.pk)
-            if comment:
-                comments_data[unique_id] = [comment]
-                print(f"Stored comment for post {unique_id}: {comment} (App Version: {app_version})")
+            comments = get_comments(latest_post.pk, 10)
+            if comments:
+                comments_data[unique_id] = comments
+                print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
             else:
-                print(f"No comment found for post {unique_id} (App Version: {app_version})")
+                print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
         sleep_interval = random.randint(60, 120)  # Randomize interval between 60 to 120 seconds
         print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
@@ -157,15 +154,15 @@ def monitor_new_posts(user_id, username):
             post_code = post['url'].split('/')[-2]
             try:
                 post_media_id = cl.media_pk_from_code(post_code)
-                new_comment = get_one_comment(post_media_id)
-                if new_comment:
-                    comments_data[post['id']] = [new_comment]
-                    refresh_message = f"Refreshing comment for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
+                new_comments = get_comments(post_media_id, 10)
+                if new_comments:
+                    comments_data[post['id']] = new_comments
+                    refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
                     refresh_messages.clear()
                     refresh_messages.append(refresh_message)
-                    print(refresh_message)            
+                    print(refresh_message)
                 else:
-                    print(f"No new comment found for post {post['id']} (App Version: {app_version})")
+                    print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
                 print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
 
