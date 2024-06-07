@@ -19,6 +19,7 @@ comments_data = {}
 post_urls = []
 last_refresh_time = None
 refresh_messages = []
+max_cycles = 100  # Set a maximum number of monitoring cycles
 
 @app.route('/')
 def index():
@@ -126,7 +127,9 @@ def get_one_comment(media_id):
 def monitor_new_posts(user_id, username):
     global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
     last_post_id = None
-    while monitoring:
+    cycle_count = 0  # Initialize cycle counter
+
+    while monitoring and cycle_count < max_cycles:
         latest_post = get_latest_post(user_id)
         if latest_post and latest_post.pk != last_post_id:
             last_post_id = latest_post.pk
@@ -140,9 +143,10 @@ def monitor_new_posts(user_id, username):
             else:
                 print(f"No comment found for post {unique_id} (App Version: {app_version})")
             last_refresh_time = time.strftime('%Y-%m-%d %H:%M:%S')
-        sleep_interval = random.randint(45, 90)  # Randomize interval between 45 to 90 seconds
+        sleep_interval = random.randint(60, 120)  # Randomize interval between 60 to 120 seconds
         print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
         time.sleep(sleep_interval)
+        cycle_count += 1  # Increment cycle counter
 
         for post in post_urls:
             post_code = post['url'].split('/')[-2]
@@ -158,6 +162,9 @@ def monitor_new_posts(user_id, username):
                     print(f"No new comment found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
                 print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
+
+    monitoring = False  # Stop monitoring after reaching max cycles
+    print(f"Monitoring stopped after {cycle_count} cycles. (App Version: {app_version})")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
