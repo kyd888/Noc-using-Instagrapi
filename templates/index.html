@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Instagram Monitor</title>
+    <title>Instagram Monitor (Version {{ version }})</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
@@ -113,11 +113,4 @@
 
             function updateRefreshMessages(messages) {
                 $('#refresh_messages').empty();
-                messages.forEach(function(message) {
-                    $('#refresh_messages').append('<p>' + message + '</p>');
-                });
-            }
-        });
-    </script>
-</body>
-</html>
+               
