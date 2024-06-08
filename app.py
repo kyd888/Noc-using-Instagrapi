@@ -17,7 +17,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with
 # Version number
 app_version = "1.0.8"
 
-clients = {}  # Store clients keyed by username
+client = None  # Store the client for the single account
 monitoring = {}
 comments_data = {}
 post_urls = {}
@@ -36,13 +36,13 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
+    global client
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
-        cl = Client()
-        cl.login(insta_username, insta_password)
-        clients[insta_username] = cl
+        client = Client()
+        client.login(insta_username, insta_password)
         session['logged_in'] = True
         return jsonify({'status': 'Login successful', 'version': app_version})
     except Exception as e:
@@ -57,9 +57,6 @@ def start_monitoring():
     global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
     target_usernames = request.form.getlist('target_usernames')  # List of usernames
     for username in target_usernames:
-        if username not in clients:
-            return jsonify({'status': f'User {username} not logged in', 'version': app_version}), 404
-
         user_id = search_user(username)
         if user_id is None:
             return jsonify({'status': f'User {username} not found or error occurred', 'version': app_version}), 404
@@ -69,7 +66,7 @@ def start_monitoring():
         comments_data[username] = []
         post_urls[username] = []
         last_refresh_time[username] = None
-        thread = Thread(target=monitor_new_posts, args=(user_id, username, clients[username]))
+        thread = Thread(target=monitor_new_posts, args=(user_id, username))
         thread.start()
     
     return jsonify({'status': 'Monitoring started', 'version': app_version})
@@ -104,23 +101,19 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             delay *= 2
     raise Exception("Maximum retries reached")
 
-def get_user_id_with_retry(username, client):
+def get_user_id_with_retry(username):
     return retry_with_exponential_backoff(lambda: client.user_id_from_username(username))
 
 def search_user(username):
-    client = clients.get(username)
-    if not client:
-        print(f"Client for {username} not found. (App Version: {app_version})")
-        return None
     try:
-        user_id = get_user_id_with_retry(username, client)
+        user_id = get_user_id_with_retry(username)
         print(f"User ID for {username} is {user_id} (App Version: {app_version})")
         return user_id
     except Exception as e:
         print(f"Error fetching user ID for {username}: {e} (App Version: {app_version})")
         return None
 
-def get_latest_post(user_id, client):
+def get_latest_post(user_id):
     posts = client.user_medias(user_id, amount=1)
     if posts:
         print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
@@ -128,7 +121,7 @@ def get_latest_post(user_id, client):
         print("No posts found. (App Version: {app_version})")
     return posts[0] if posts else None
 
-def get_comments(media_id, client, count=10):
+def get_comments(media_id, count=10):
     try:
         comments = client.media_comments(media_id, amount=count)
         if comments:
@@ -155,19 +148,19 @@ def write_to_s3(data, filename):
     except NoCredentialsError:
         print("Credentials not available")
 
-def monitor_new_posts(user_id, username, client):
+def monitor_new_posts(user_id, username):
     global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
     last_post_id = None
     cycle_count = 0  # Initialize cycle counter
 
     while monitoring.get(username, False) and cycle_count < max_cycles:
-        latest_post = get_latest_post(user_id, client)
+        latest_post = get_latest_post(user_id)
         if latest_post and latest_post.pk != last_post_id:
             last_post_id = latest_post.pk
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls[username].append({'url': post_url, 'id': unique_id})
-            comments = get_comments(latest_post.pk, client, 10)
+            comments = get_comments(latest_post.pk, 10)
             if comments:
                 comments_data[username].append({'id': unique_id, 'comments': comments})
                 print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
@@ -186,7 +179,7 @@ def monitor_new_posts(user_id, username, client):
             post_code = post['url'].split('/')[-2]
             try:
                 post_media_id = client.media_pk_from_code(post_code)
-                new_comments = get_comments(post_media_id, client, 10)
+                new_comments = get_comments(post_media_id, 10)
                 if new_comments:
                     comments_data[username] = new_comments
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
