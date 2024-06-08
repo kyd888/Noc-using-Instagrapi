@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.6"
+app_version = "1.1.7"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -28,6 +28,8 @@ refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
+break_after_actions = 20  # Take a break after this many actions
+break_duration = 1800  # Break duration in seconds (30 minutes)
 
 @app.route('/')
 def index():
@@ -208,6 +210,11 @@ def monitor_new_posts(user_id, username):
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
                 print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
+
+        if interaction_count >= break_after_actions:
+            print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
+            time.sleep(break_duration)  # Sleep for the break duration
+            interaction_count = 0  # Reset interaction counter after the break
 
     monitoring[username] = False  # Stop monitoring after reaching max cycles or interactions
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
