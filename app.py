@@ -1,4 +1,4 @@
-=import os
+import os
 import time
 import random
 import uuid
@@ -27,8 +27,8 @@ max_cycles = 100  # Set a maximum number of monitoring cycles
 
 # AWS S3 configuration
 s3 = boto3.client('s3', 
-    aws_access_key_id='YOUR_AWS_ACCESS_KEY', 
-    aws_secret_access_key='YOUR_AWS_SECRET_KEY', 
+    aws_access_key_id='AKIA4MTWL2PYGOJGK7FD', 
+    aws_secret_access_key='wNKBT3/TMu34QE/oOO2nDjmd2XUPkqwpI+FuDBYd', 
     region_name='us-east-1'  # Replace with your actual region
 )
 bucket_name = 'your-s3-bucket-name'
