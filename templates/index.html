@@ -35,8 +35,7 @@
                 $.post('/login', $(this).serialize(), function(response) {
                     alert(response.status);
                     if (response.status === 'Login successful') {
-                        $('#login-form').trigger('reset');
-                        $('#login-form').show();
+                        $('#login-form').hide();
                         $('#monitor-form').show();
                         $('#status').text('Logged in. You can now start monitoring.');
                     }
@@ -105,3 +104,4 @@
     </script>
 </body>
 </html>
+
