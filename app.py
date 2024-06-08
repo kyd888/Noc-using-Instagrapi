@@ -15,9 +15,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.3"
+app_version = "1.1.5"
 
 client = None  # Store the client for the single account
+s3 = None  # Store the S3 client
+bucket_name = None
 monitoring = {}
 comments_data = {}
 post_urls = {}
@@ -25,29 +27,30 @@ last_refresh_time = {}
 refresh_messages = {}
 max_cycles = 100  # Set a maximum number of monitoring cycles
 
-# AWS S3 configuration
-s3 = boto3.client('s3', 
-    aws_access_key_id='AKIA4MTWL2PYGOJGK7FD', 
-    aws_secret_access_key='wNKBT3/TMu34QE/oOO2nDjmd2XUPkqwpI+FuDBYd', 
-    region_name='us-east-1'  # Replace with your actual region
-)
-bucket_name = 'your-s3-bucket-name'
-csv_filename = 'instagram_data.csv'
-
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version)
 
 @app.route('/login', methods=['POST'])
 def login():
-    global client
+    global client, s3, bucket_name
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
+    aws_access_key = request.form['aws_access_key']
+    aws_secret_key = request.form['aws_secret_key']
+    aws_region = request.form['aws_region']
+    bucket_name = request.form['s3_bucket_name']
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
         client.login(insta_username, insta_password)
         session['logged_in'] = True
+        # Configure AWS S3 client
+        s3 = boto3.client('s3', 
+            aws_access_key_id=aws_access_key, 
+            aws_secret_access_key=aws_secret_key, 
+            region_name=aws_region
+        )
         return jsonify({'status': 'Login successful', 'version': app_version})
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
