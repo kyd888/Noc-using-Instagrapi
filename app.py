@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.5"
+app_version = "1.1.6"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -25,11 +25,13 @@ comments_data = {}
 post_urls = {}
 last_refresh_time = {}
 refresh_messages = {}
+csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
+max_interactions = 50  # Set a maximum number of interactions per session
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -156,23 +158,27 @@ def write_to_s3(data, filename):
         print("Credentials not available")
 
 def monitor_new_posts(user_id, username):
-    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages
+    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages, csv_data_global
     last_post_id = None
     cycle_count = 0  # Initialize cycle counter
+    interaction_count = 0  # Initialize interaction counter
 
-    while monitoring.get(username, False) and cycle_count < max_cycles:
+    while monitoring.get(username, False) and cycle_count < max_cycles and interaction_count < max_interactions:
         latest_post = get_latest_post(user_id)
+        interaction_count += 1  # Increment interaction counter
         if latest_post and latest_post.pk != last_post_id:
             last_post_id = latest_post.pk
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls[username].append({'url': post_url, 'id': unique_id})
             comments = get_comments(latest_post.pk, 10)
+            interaction_count += 1  # Increment interaction counter
             if comments:
                 comments_data[username].append({'id': unique_id, 'comments': comments})
                 print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
-                # Write to S3
+                # Write to S3 and store locally
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
+                csv_data_global.extend(csv_data)
                 write_to_s3(csv_data, csv_filename)
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
@@ -187,22 +193,24 @@ def monitor_new_posts(user_id, username):
             try:
                 post_media_id = client.media_pk_from_code(post_code)
                 new_comments = get_comments(post_media_id, 10)
+                interaction_count += 1  # Increment interaction counter
                 if new_comments:
                     comments_data[username] = new_comments
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
                     refresh_messages[username].clear()
                     refresh_messages[username].append(refresh_message)
                     print(refresh_message)
-                    # Write to S3
+                    # Write to S3 and store locally
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+                    csv_data_global.extend(csv_data)
                     write_to_s3(csv_data, csv_filename)
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
                 print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
 
-    monitoring[username] = False  # Stop monitoring after reaching max cycles
-    print(f"Monitoring stopped for {username} after {cycle_count} cycles. (App Version: {app_version})")
+    monitoring[username] = False  # Stop monitoring after reaching max cycles or interactions
+    print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
