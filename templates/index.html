@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NOC (Version {{ version }})</title>
+    <title>Instagram Monitor (Version {{ version }})</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>NOC (Version {{ version }})</h1>
+    <h1>Instagram Monitor (Version {{ version }})</h1>
     <form id="login-form" method="POST">
         <label for="insta_username">Instagram Username:</label><br>
         <input type="text" id="insta_username" name="insta_username"><br><br>
         <label for="insta_password">Instagram Password:</label><br>
         <input type="password" id="insta_password" name="insta_password"><br><br>
+        <label for="aws_access_key">AWS Access Key:</label><br>
+        <input type="text" id="aws_access_key" name="aws_access_key"><br><br>
+        <label for="aws_secret_key">AWS Secret Key:</label><br>
+        <input type="password" id="aws_secret_key" name="aws_secret_key"><br><br>
+        <label for="aws_region">AWS Region:</label><br>
+        <input type="text" id="aws_region" name="aws_region"><br><br>
+        <label for="s3_bucket_name">S3 Bucket Name:</label><br>
+        <input type="text" id="s3_bucket_name" name="s3_bucket_name"><br><br>
         <button type="submit">Login</button>
     </form>
     
