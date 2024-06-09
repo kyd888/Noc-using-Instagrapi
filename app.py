@@ -232,5 +232,5 @@ def monitor_new_posts(user_id, username):
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port, debug=False)
