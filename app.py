@@ -66,8 +66,9 @@ def start_monitoring():
         return jsonify({'status': 'Please login first', 'version': app_version}), 403
 
     global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
-    target_usernames = request.form.getlist('target_usernames')  # List of usernames
+    target_usernames = request.form.get('target_usernames').split(',')  # List of usernames
     for username in target_usernames:
+        username = username.strip()
         user_id = search_user(username)
         if user_id is None:
             return jsonify({'status': f'User {username} not found or error occurred', 'version': app_version}), 404
@@ -183,6 +184,7 @@ def monitor_new_posts(user_id, username):
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
                 csv_data_global.extend(csv_data)
                 write_to_s3(csv_data, 'instagram_data.csv')  # Updated to include filename
+                print(f"CSV Data: {csv_data} (App Version: {app_version})")
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -207,6 +209,7 @@ def monitor_new_posts(user_id, username):
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
                     csv_data_global.extend(csv_data)
                     write_to_s3(csv_data, 'instagram_data.csv')  # Updated to include filename
+                    print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
