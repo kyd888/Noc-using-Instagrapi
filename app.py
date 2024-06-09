@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.7"
+app_version = "1.1.0"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -173,6 +173,7 @@ def monitor_new_posts(user_id, username):
             post_url = f"https://www.instagram.com/p/{latest_post.code}/"
             unique_id = str(uuid.uuid4().int)[:4]
             post_urls[username].append({'url': post_url, 'id': unique_id})
+            print(f"Found new post: {post_url} (App Version: {app_version})")
             comments = get_comments(latest_post.pk, 10)
             interaction_count += 1  # Increment interaction counter
             if comments:
