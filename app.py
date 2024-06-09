@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.3"
+app_version = "1.1.2"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -66,7 +66,11 @@ def start_monitoring():
         return jsonify({'status': 'Please login first', 'version': app_version}), 403
 
     global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
-    target_usernames = request.form.get('target_usernames').split(',')  # List of usernames
+    target_usernames = request.form.get('target_usernames')
+    if not target_usernames:
+        return jsonify({'status': 'No target usernames provided', 'version': app_version}), 400
+
+    target_usernames = target_usernames.split(',')  # List of usernames
     for username in target_usernames:
         username = username.strip()
         user_id = search_user(username)
