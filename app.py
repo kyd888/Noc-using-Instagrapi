@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.0"
+app_version = "1.1.2"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -182,7 +182,7 @@ def monitor_new_posts(user_id, username):
                 # Write to S3 and store locally
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
                 csv_data_global.extend(csv_data)
-                write_to_s3(csv_data, csv_filename)
+                write_to_s3(csv_data, 'instagram_data.csv')  # Updated to include filename
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -206,7 +206,7 @@ def monitor_new_posts(user_id, username):
                     # Write to S3 and store locally
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
                     csv_data_global.extend(csv_data)
-                    write_to_s3(csv_data, csv_filename)
+                    write_to_s3(csv_data, 'instagram_data.csv')  # Updated to include filename
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
