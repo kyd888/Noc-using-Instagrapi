@@ -204,7 +204,11 @@ def monitor_new_posts(user_id, username):
                 new_comments = get_comments(post_media_id, 10)
                 interaction_count += 1  # Increment interaction counter
                 if new_comments:
-                    comments_data[username] = new_comments
+                    # Ensure we maintain the structure of the comments data
+                    for post_data in comments_data[username]:
+                        if post_data['id'] == post['id']:
+                            post_data['comments'] = new_comments
+                            break
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
                     refresh_messages[username].clear()
                     refresh_messages[username].append(refresh_message)
