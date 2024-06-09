@@ -96,6 +96,7 @@
                         });
 
                         $.get('/get_post_urls', function(data) {
+                            $('#accounts_data').empty();  // Clear previous data
                             for (let username in data.post_urls) {
                                 $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
                                 const urls = data.post_urls[username];
