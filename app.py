@@ -10,6 +10,7 @@ import requests
 import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
+from instagrapi.exceptions import ClientError
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -97,7 +98,7 @@ def stop_monitoring():
 def get_comments_data():
     return jsonify({'comments': comments_data, 'version': app_version})
 
-@app.route('/get_post_urls', methods=['GET'])
+@app.route('/get_post_urls', methods['GET'])
 def get_post_urls():
     return jsonify({
         'post_urls': post_urls, 
@@ -111,10 +112,17 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     for i in range(retries):
         try:
             return func()
+        except ClientError as e:
+            if 'Please wait a few minutes before you try again' in str(e):
+                print(f"Rate limit hit. Retrying in {delay} seconds. (App Version: {app_version})")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                raise e
         except requests.exceptions.RequestException as e:
             print(f"Request failed: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay)
-            delay *= 2
+            delay *= 2  # Exponential backoff
     raise Exception("Maximum retries reached")
 
 def get_user_id_with_retry(username):
