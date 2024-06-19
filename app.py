@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.3"
+app_version = "1.1.5"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -60,6 +60,13 @@ def get_device_settings():
         "android_release": release
     }
 
+def get_current_proxy():
+    """Retrieve current proxy settings from the system."""
+    proxy = requests.get('http://ipinfo.io').json().get('ip')
+    if proxy:
+        return f"http://{proxy}:port"  # Adjust port accordingly
+    return None
+
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
@@ -78,6 +85,12 @@ def login():
         client = Client()
         device_settings = get_device_settings()
         client.set_device(device_settings)
+        
+        proxy = get_current_proxy()
+        if proxy:
+            client.set_proxy(proxy)
+            print(f"Using proxy: {proxy}")
+
         client.login(insta_username, insta_password)
         session['logged_in'] = True
         # Configure AWS S3 client
