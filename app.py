@@ -11,6 +11,8 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
+import platform
+import subprocess
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -32,6 +34,32 @@ max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 break_duration = 1800  # Break duration in seconds (30 minutes)
 
+def get_device_settings():
+    """Detect the device settings of the current device."""
+    system = platform.system()
+    if system == "Windows":
+        manufacturer = subprocess.check_output("wmic computersystem get manufacturer").decode().split('\n')[1].strip()
+        model = subprocess.check_output("wmic computersystem get model").decode().split('\n')[1].strip()
+        version = platform.version()
+        release = platform.release()
+    elif system == "Linux":
+        manufacturer = subprocess.check_output("cat /sys/class/dmi/id/chassis_vendor").decode().strip()
+        model = subprocess.check_output("cat /sys/class/dmi/id/product_name").decode().strip()
+        version = platform.version()
+        release = platform.release()
+    else:
+        manufacturer = "Unknown"
+        model = "Unknown"
+        version = platform.version()
+        release = platform.release()
+
+    return {
+        "phone_manufacturer": manufacturer,
+        "phone_model": model,
+        "android_version": version,
+        "android_release": release
+    }
+
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
@@ -48,6 +76,8 @@ def login():
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
+        device_settings = get_device_settings()
+        client.set_device(device_settings)
         client.login(insta_username, insta_password)
         session['logged_in'] = True
         # Configure AWS S3 client
@@ -98,7 +128,7 @@ def stop_monitoring():
 def get_comments_data():
     return jsonify({'comments': comments_data, 'version': app_version})
 
-@app.route('/get_post_urls', methods['GET'])
+@app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
     return jsonify({
         'post_urls': post_urls, 
@@ -214,7 +244,7 @@ def monitor_new_posts(user_id, username):
                 if new_comments:
                     # Ensure we maintain the structure of the comments data
                     for post_data in comments_data[username]:
-                        if post_data['id'] == post['id']:
+                        if (post_data['id'] == post['id']):
                             post_data['comments'] = new_comments
                             break
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
