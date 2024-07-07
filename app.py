@@ -2,7 +2,6 @@ import os
 import time
 import random
 import uuid
-import numpy as np
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
@@ -12,14 +11,12 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
-import platform
-import subprocess
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.3"
+app_version = "1.1.4"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -34,39 +31,6 @@ max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 break_duration = 1800  # Break duration in seconds (30 minutes)
-
-def get_device_settings():
-    """Detect the device settings of the current device."""
-    system = platform.system()
-    if system == "Windows":
-        manufacturer = subprocess.check_output("wmic computersystem get manufacturer").decode().split('\n')[1].strip()
-        model = subprocess.check_output("wmic computersystem get model").decode().split('\n')[1].strip()
-        version = platform.version()
-        release = platform.release()
-    elif system == "Linux":
-        manufacturer = subprocess.check_output("cat /sys/class/dmi/id/chassis_vendor").decode().strip()
-        model = subprocess.check_output("cat /sys/class/dmi/id/product_name").decode().strip()
-        version = platform.version()
-        release = platform.release()
-    else:
-        manufacturer = "Unknown"
-        model = "Unknown"
-        version = platform.version()
-        release = platform.release()
-
-    return {
-        "phone_manufacturer": manufacturer,
-        "phone_model": model,
-        "android_version": version,
-        "android_release": release
-    }
-
-def get_current_proxy():
-    """Retrieve current proxy settings from the system."""
-    proxy = requests.get('http://ipinfo.io').json().get('ip')
-    if proxy:
-        return f"http://{proxy}:port"  # Adjust port accordingly
-    return None
 
 @app.route('/')
 def index():
@@ -84,15 +48,7 @@ def login():
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
-        device_settings = get_device_settings()
-        client.set_device(device_settings)
-        
-        proxy = get_current_proxy()
-        if proxy:
-            client.set_proxy(proxy)
-            print(f"Using proxy: {proxy}")
-
-        client.login(insta_username, insta_password)
+        login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
@@ -104,6 +60,21 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+def login_with_retries(client, username, password, retries=5, initial_delay=60):
+    delay = initial_delay
+    for i in range(retries):
+        try:
+            client.login(username, password)
+            return
+        except ClientError as e:
+            if 'Please wait a few minutes before you try again' in str(e):
+                print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
+                time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
+                delay *= 2  # Exponential backoff
+            else:
+                raise e
+    raise Exception("Maximum retries reached for login")
 
 @app.route('/start_monitoring', methods=['POST'])
 def start_monitoring():
@@ -159,13 +130,13 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
         except ClientError as e:
             if 'Please wait a few minutes before you try again' in str(e):
                 print(f"Rate limit hit. Retrying in {delay} seconds. (App Version: {app_version})")
-                time.sleep(delay)
+                time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
             else:
                 raise e
         except requests.exceptions.RequestException as e:
             print(f"Request failed: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
-            time.sleep(delay)
+            time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
     raise Exception("Maximum retries reached")
 
@@ -258,7 +229,7 @@ def monitor_new_posts(user_id, username):
                 if new_comments:
                     # Ensure we maintain the structure of the comments data
                     for post_data in comments_data[username]:
-                        if (post_data['id'] == post['id']):
+                        if post_data['id'] == post['id']:
                             post_data['comments'] = new_comments
                             break
                     refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
