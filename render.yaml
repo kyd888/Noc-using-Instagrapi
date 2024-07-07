@@ -2,8 +2,9 @@ services:
   - type: web
     name: your-service-name
     env: python
-    buildCommand: 
+    buildCommand:
       - apt-get update && apt-get install -y build-essential gcc libatlas-base-dev gfortran
       - pip install --upgrade pip
       - pip install -r requirements.txt
+      - bash fix_flask.sh
     startCommand: gunicorn app:app
