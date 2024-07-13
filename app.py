@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.3"
+app_version = "1.1.5"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
