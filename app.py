@@ -4,7 +4,6 @@ import random
 import uuid
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, session
-from urllib.parse import quote as url_quote
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -12,10 +11,12 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
-import openai  # Ensure you have the OpenAI package installed
+from urllib.parse import quote as url_quote  # Updated import
+import openai  # Ensure this line is present
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
+
 
 # Version number
 app_version = "1.1.5"
