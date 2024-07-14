@@ -11,7 +11,7 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
-from urllib.parse import quote as url_quote  # Ensure this is the correct import
+from urllib.parse import quote as url_quote  # Use this import instead of werkzeug.urls
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
