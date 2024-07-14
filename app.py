@@ -11,12 +11,10 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
-from urllib.parse import quote as url_quote  # Updated import
-import openai  # Ensure this line is present
+from urllib.parse import quote as url_quote  # Ensure this is the correct import
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
-
 
 # Version number
 app_version = "1.1.5"
@@ -30,7 +28,6 @@ post_urls = {}
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
-analysis_results = {}  # Store analysis results for each commenter
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
@@ -38,7 +35,7 @@ break_duration = 1800  # Break duration in seconds (30 minutes)
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, analysis_results=analysis_results)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -181,26 +178,6 @@ def get_comments(media_id, count=10):
         print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
         return []
 
-def analyze_profile_content(username):
-    try:
-        user_id = client.user_id_from_username(username)
-        posts = client.user_medias(user_id, amount=20)  # Fetch last 20 posts
-        if not posts:
-            return f"No posts found for {username}"
-        
-        combined_text = ' '.join(post.caption_text for post in posts if post.caption_text)
-        
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=f"Analyze the following text and determine the main topics: {combined_text}",
-            max_tokens=100
-        )
-        
-        return response.choices[0].text.strip()
-    except Exception as e:
-        print(f"Error analyzing profile content for {username}: {e}")
-        return f"Error analyzing profile content for {username}"
-
 def write_to_s3(data, filename):
     df = pd.DataFrame(data)
     csv_buffer = StringIO()
@@ -212,7 +189,7 @@ def write_to_s3(data, filename):
         print("Credentials not available")
 
 def monitor_new_posts(user_id, username):
-    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages, csv_data_global, analysis_results
+    global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages, csv_data_global
     last_post_id = None
     cycle_count = 0  # Initialize cycle counter
     interaction_count = 0  # Initialize interaction counter
@@ -236,11 +213,6 @@ def monitor_new_posts(user_id, username):
                 csv_data_global.extend(csv_data)
                 write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
                 print(f"CSV Data: {csv_data} (App Version: {app_version})")
-                
-                # Analyze each commenter's profile content
-                for commenter, _, _ in comments:
-                    if commenter not in analysis_results:
-                        analysis_results[commenter] = analyze_profile_content(commenter)
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -270,11 +242,6 @@ def monitor_new_posts(user_id, username):
                     csv_data_global.extend(csv_data)
                     write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
                     print(f"CSV Data: {csv_data} (App Version: {app_version})")
-                    
-                    # Analyze each new commenter's profile content
-                    for commenter, _, _ in new_comments:
-                        if commenter not in analysis_results:
-                            analysis_results[commenter] = analyze_profile_content(commenter)
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
             except Exception as e:
