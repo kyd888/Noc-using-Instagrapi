@@ -47,10 +47,10 @@ def login():
     insta_password = request.form['insta_password']
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
-    aws_secret_key = file.read().strip()
+        aws_access_key = file.read().strip()
     # Read AWS secret key from secret file
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
-    aws_secret_key = file.read().strip()
+        aws_secret_key = file.read().strip()
     aws_region = 'us-east-1'
     bucket_name = 'noc-user-data3'
     try:
