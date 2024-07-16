@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.5"
+app_version = "1.1.6"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -207,6 +207,8 @@ def monitor_new_posts(user_id, username):
             post_urls[username].append({'url': post_url, 'id': unique_id})
             print(f"Found new post: {post_url} (App Version: {app_version})")
             comments = get_comments(latest_post.pk, 10)
+            # Filter out comments from the target user
+            comments = [c for c in comments if c[0] != username]
             interaction_count += 1  # Increment interaction counter
             if comments:
                 comments_data[username].append({'id': unique_id, 'comments': comments})
@@ -231,6 +233,8 @@ def monitor_new_posts(user_id, username):
             try:
                 post_media_id = client.media_pk_from_code(post_code)
                 new_comments = get_comments(post_media_id, 10)
+                # Filter out comments from the target user
+                new_comments = [c for c in new_comments if c[0] != username]
                 interaction_count += 1  # Increment interaction counter
                 if new_comments:
                     # Ensure we maintain the structure of the comments data
