@@ -1,123 +1,123 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Instagram Monitor (Version {{ version }})</title>
-    <link rel="stylesheet" href="{{ url_for('static/styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-<body>
-    <h1>Instagram Monitor (Version {{ version }})</h1>
-    <form id="login-form" method="POST">
-        <label for="insta_username">Instagram Username:</label><br>
-        <input type="text" id="insta_username" name="insta_username"><br><br>
-        <label for="insta_password">Instagram Password:</label><br>
-        <input type="password" id="insta_password" name="insta_password"><br><br>
-        <label for="aws_access_key">AWS Access Key:</label><br>
-        <input type="text" id="aws_access_key" name="aws_access_key"><br><br>
-        <label for="aws_secret_key">AWS Secret Key:</label><br>
-        <input type="password" id="aws_secret_key" name="aws_secret_key"><br><br>
-        <label for="aws_region">AWS Region:</label><br>
-        <input type="text" id="aws_region" name="aws_region"><br><br>
-        <label for="s3_bucket_name">S3 Bucket Name:</label><br>
-        <input type="text" id="s3_bucket_name" name="s3_bucket_name"><br><br>
-        <button type="submit">Login</button>
-    </form>
-    
-    <form id="monitor-form" style="display:none;">
-        <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-        <input type="text" id="target_usernames" name="target_usernames"><br><br>
-        <button type="submit">Start Monitoring</button>
-        <button type="button" id="stop-monitoring">Stop Monitoring</button>
-    </form>
-
-    <h2>Status</h2>
-    <div id="status">Not monitoring.</div>
-
-    <h2>CSV Data</h2>
-    <div id="csv_data">
-        {% for row in csv_data %}
-            <p>Username: {{ row.username }} | Post ID: {{ row.post_id }} | Commenter: {{ row.commenter }} | Comment: {{ row.comment }} | Time: {{ row.time }}</p>
-        {% endfor %}
-    </div>
-
-    <div id="accounts_data"></div>
-
-    <script>
-        let monitoring = false;
-
-        $(document).ready(function() {
-            $('#login-form').submit(function(event) {
-                event.preventDefault();
-                $.post('/login', $(this).serialize(), function(response) {
-                    alert(response.status);
-                    if (response.status === 'Login successful') {
-                        $('#login-form').hide();
-                        $('#monitor-form').show();
-                        $('#status').text('Logged in. You can now start monitoring.');
-                    }
-                });
-            });
-
-            $('#monitor-form').submit(function(event) {
-                event.preventDefault();
-                const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
-                $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
-                    alert(response.status);
-                    if (response.status === 'Monitoring started') {
-                        $('#status').text('Monitoring has started.');
-                        monitoring = true;
-                        checkStatus();
-                    }
-                });
-            });
-
-            $('#stop-monitoring').click(function() {
-                $.post('/stop_monitoring', function(response) {
-                    alert(response.status);
-                    $('#status').text('Monitoring has stopped.');
-                    monitoring = false;
-                });
-            });
-
-            function checkStatus() {
-                if (monitoring) {
-                    setTimeout(function() {
-                        $.get('/get_comments', function(data) {
-                            $('#accounts_data').empty();
-                            for (let username in data.comments) {
-                                $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
-                                const posts = data.comments[username];
-                                posts.forEach(post => {
-                                    $('#accounts_data').append(`<h4>Post ${post.id}</h4>`);
-                                    post.comments.forEach(comment => {
-                                        $('#accounts_data').append(`<p>User: ${comment[0]}<br>Comment: ${comment[1]}<br>Time: ${comment[2]}</p><hr>`);
-                                    });
-                                });
-                            }
-                        });
-
-                        $.get('/get_post_urls', function(data) {
-                            $('#accounts_data').empty();  // Clear previous data
-                            for (let username in data.post_urls) {
-                                $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
-                                const urls = data.post_urls[username];
-                                urls.forEach(post => {
-                                    $('#accounts_data').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-                                });
-                            }
-                            for (let username in data.last_refresh_time) {
-                                $('#accounts_data').append(`<h4>Last refresh time for ${username}: ${data.last_refresh_time[username]}</h4>`);
-                            }
-                            for (let username in data.refresh_messages) {
-                                $('#accounts_data').append(`<h4>Refresh message for ${username}: ${data.refresh_messages[username]}</h4>`);
-                            }
-                        });
-
-                        checkStatus();
-                    }, 5000);
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+   <!DOCTYPE html>
+   <html>
+   <head>
+       <title>Instagram Monitor (Version {{ version }})</title>
+       <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+   </head>
+   <body>
+       <h1>Instagram Monitor (Version {{ version }})</h1>
+       <form id="login-form" method="POST">
+           <label for="insta_username">Instagram Username:</label><br>
+           <input type="text" id="insta_username" name="insta_username"><br><br>
+           <label for="insta_password">Instagram Password:</label><br>
+           <input type="password" id="insta_password" name="insta_password"><br><br>
+           <label for="aws_access_key">AWS Access Key:</label><br>
+           <input type="text" id="aws_access_key" name="aws_access_key"><br><br>
+           <label for="aws_secret_key">AWS Secret Key:</label><br>
+           <input type="password" id="aws_secret_key" name="aws_secret_key"><br><br>
+           <label for="aws_region">AWS Region:</label><br>
+           <input type="text" id="aws_region" name="aws_region"><br><br>
+           <label for="s3_bucket_name">S3 Bucket Name:</label><br>
+           <input type="text" id="s3_bucket_name" name="s3_bucket_name"><br><br>
+           <button type="submit">Login</button>
+       </form>
+       
+       <form id="monitor-form" style="display:none;">
+           <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+           <input type="text" id="target_usernames" name="target_usernames"><br><br>
+           <button type="submit">Start Monitoring</button>
+           <button type="button" id="stop-monitoring">Stop Monitoring</button>
+       </form>
+   
+       <h2>Status</h2>
+       <div id="status">Not monitoring.</div>
+   
+       <h2>CSV Data</h2>
+       <div id="csv_data">
+           {% for row in csv_data %}
+               <p>Username: {{ row.username }} | Post ID: {{ row.post_id }} | Commenter: {{ row.commenter }} | Comment: {{ row.comment }} | Time: {{ row.time }}</p>
+           {% endfor %}
+       </div>
+   
+       <div id="accounts_data"></div>
+   
+       <script>
+           let monitoring = false;
+   
+           $(document).ready(function() {
+               $('#login-form').submit(function(event) {
+                   event.preventDefault();
+                   $.post('/login', $(this).serialize(), function(response) {
+                       alert(response.status);
+                       if (response.status === 'Login successful') {
+                           $('#login-form').hide();
+                           $('#monitor-form').show();
+                           $('#status').text('Logged in. You can now start monitoring.');
+                       }
+                   });
+               });
+   
+               $('#monitor-form').submit(function(event) {
+                   event.preventDefault();
+                   const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+                   $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
+                       alert(response.status);
+                       if (response.status === 'Monitoring started') {
+                           $('#status').text('Monitoring has started.');
+                           monitoring = true;
+                           checkStatus();
+                       }
+                   });
+               });
+   
+               $('#stop-monitoring').click(function() {
+                   $.post('/stop_monitoring', function(response) {
+                       alert(response.status);
+                       $('#status').text('Monitoring has stopped.');
+                       monitoring = false;
+                   });
+               });
+   
+               function checkStatus() {
+                   if (monitoring) {
+                       setTimeout(function() {
+                           $.get('/get_comments', function(data) {
+                               $('#accounts_data').empty();
+                               for (let username in data.comments) {
+                                   $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
+                                   const posts = data.comments[username];
+                                   posts.forEach(post => {
+                                       $('#accounts_data').append(`<h4>Post ${post.id}</h4>`);
+                                       post.comments.forEach(comment => {
+                                           $('#accounts_data').append(`<p>User: ${comment[0]}<br>Comment: ${comment[1]}<br>Time: ${comment[2]}</p><hr>`);
+                                       });
+                                   });
+                               }
+                           });
+   
+                           $.get('/get_post_urls', function(data) {
+                               $('#accounts_data').empty();  // Clear previous data
+                               for (let username in data.post_urls) {
+                                   $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
+                                   const urls = data.post_urls[username];
+                                   urls.forEach(post => {
+                                       $('#accounts_data').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+                                   });
+                               }
+                               for (let username in data.last_refresh_time) {
+                                   $('#accounts_data').append(`<h4>Last refresh time for ${username}: ${data.last_refresh_time[username]}</h4>`);
+                               }
+                               for (let username in data.refresh_messages) {
+                                   $('#accounts_data').append(`<h4>Refresh message for ${username}: ${data.refresh_messages[username]}</h4>`);
+                               }
+                           });
+   
+                           checkStatus();
+                       }, 5000);
+                   }
+               }
+           });
+       </script>
+   </body>
+   </html>
