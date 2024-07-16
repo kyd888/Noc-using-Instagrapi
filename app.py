@@ -45,10 +45,14 @@ def login():
     global client, s3, bucket_name
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
-    aws_access_key = request.form['aws_access_key']
-    aws_secret_key = request.form['aws_secret_key']
-    aws_region = request.form['aws_region']
-    bucket_name = request.form['s3_bucket_name']
+    # Read AWS access key from secret file
+    with open('/etc/secrets/aws_access_key.txt', 'r') as file:
+    aws_secret_key = file.read().strip()
+    # Read AWS secret key from secret file
+    with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
+    aws_secret_key = file.read().strip()
+    aws_region = 'us-east-1'
+    bucket_name = 'noc-user-data3'
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
