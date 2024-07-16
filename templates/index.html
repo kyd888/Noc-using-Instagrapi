@@ -7,12 +7,11 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-    <h1>Instagram Monitor (Version {{ version }})</h1>
+    <h1>NOC (Version {{ version }})</h1>
     <form id="login-form" method="POST">
         <label for="insta_username">Instagram Username:</label><br>
-        <input type="text" id="insta_username" name="insta_username"><br><br>
-        <label for="insta_password">Instagram Password:</label><br>
-        <input type="password" id="insta_password" name="insta_password"><br><br>
+        <input title="Username"> type="text" id="insta_username" name="insta_username"><br><br>
+        <input title="Password"> type="password" id="insta_password" name="insta_password"><br><br>
         <button type="submit">Login</button>
     </form>
     
