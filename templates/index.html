@@ -1,40 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Monitor (Version {{ version }})</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
     <header>
         <h1>Instagram Monitor (Version {{ version }})</h1>
     </header>
-    <main class="container">
+    <main>
         <form id="login-form" method="POST">
-            <label for="insta_username">Instagram Username:</label>
-            <input type="text" id="insta_username" name="insta_username">
-
-            <label for="insta_password">Instagram Password:</label>
-            <input type="password" id="insta_password" name="insta_password">
-
-            <label for="aws_access_key">AWS Access Key:</label>
-            <input type="text" id="aws_access_key" name="aws_access_key">
-
-            <label for="aws_secret_key">AWS Secret Key:</label>
-            <input type="password" id="aws_secret_key" name="aws_secret_key">
-
-            <label for="aws_region">AWS Region:</label>
-            <input type="text" id="aws_region" name="aws_region">
-
-            <label for="s3_bucket_name">S3 Bucket Name:</label>
-            <input type="text" id="s3_bucket_name" name="s3_bucket_name">
-
+            <label for="insta_username">Instagram Username:</label><br>
+            <input type="text" id="insta_username" name="insta_username"><br><br>
+            <label for="insta_password">Instagram Password:</label><br>
+            <input type="password" id="insta_password" name="insta_password"><br><br>
+            <label for="aws_access_key">AWS Access Key:</label><br>
+            <input type="text" id="aws_access_key" name="aws_access_key"><br><br>
+            <label for="aws_secret_key">AWS Secret Key:</label><br>
+            <input type="password" id="aws_secret_key" name="aws_secret_key"><br><br>
+            <label for="aws_region">AWS Region:</label><br>
+            <input type="text" id="aws_region" name="aws_region"><br><br>
+            <label for="s3_bucket_name">S3 Bucket Name:</label><br>
+            <input type="text" id="s3_bucket_name" name="s3_bucket_name"><br><br>
             <button type="submit">Login</button>
         </form>
         
         <form id="monitor-form" style="display:none;">
-            <label for="target_usernames">Target Usernames (comma-separated):</label>
-            <input type="text" id="target_usernames" name="target_usernames">
+            <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+            <input type="text" id="target_usernames" name="target_usernames"><br><br>
             <button type="submit">Start Monitoring</button>
             <button type="button" id="stop-monitoring">Stop Monitoring</button>
         </form>
@@ -52,8 +48,9 @@
         <div id="accounts_data"></div>
     </main>
     <footer>
-        <p>NOC Monitoring &copy; 2024</p>
+        &copy; 2024 Instagram Monitor
     </footer>
+
     <script>
         let monitoring = false;
 
