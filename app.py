@@ -215,7 +215,7 @@ def monitor_new_posts(user_id, username):
                 print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
                 # Write to S3 and store locally
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
-                csv_data_global.extend(csv_data)
+                csv_data_global.append({'username': username, 'post_id': unique_id, 'post_url': post_url})
                 write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
                 print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 # Analyze comments using OpenAI
@@ -248,7 +248,6 @@ def monitor_new_posts(user_id, username):
                     print(refresh_message)
                     # Write to S3 and store locally
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
-                    csv_data_global.extend(csv_data)
                     write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
                     print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 else:
