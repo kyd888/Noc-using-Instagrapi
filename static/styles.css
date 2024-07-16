@@ -70,3 +70,12 @@ h2 {
     text-align: center;
     color: #333;
 }
+/* Add these styles to remove the border and style the legend */
+.no-border {
+    border: none;
+}
+
+.no-border legend {
+    font-size: 1.5em;
+    font-weight: bold;
+}
