@@ -11,13 +11,13 @@ import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError
 from instagrapi.exceptions import ClientError
-from urllib.parse import quote as url_quote  # Updated import
+import openai
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Version number
-app_version = "1.1.7"
+app_version = "1.1.5"
 
 client = None  # Store the client for the single account
 s3 = None  # Store the S3 client
@@ -32,6 +32,9 @@ max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 break_duration = 1800  # Break duration in seconds (30 minutes)
+
+# Initialize OpenAI client
+openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 @app.route('/')
 def index():
@@ -213,6 +216,8 @@ def monitor_new_posts(user_id, username):
                 csv_data_global.extend(csv_data)
                 write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
                 print(f"CSV Data: {csv_data} (App Version: {app_version})")
+                # Analyze comments using OpenAI
+                analyze_comments_with_openai(comments, unique_id)
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -254,6 +259,22 @@ def monitor_new_posts(user_id, username):
 
     monitoring[username] = False  # Stop monitoring after reaching max cycles or interactions
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
+
+def analyze_comments_with_openai(comments, unique_id):
+    try:
+        comment_texts = [comment[1] for comment in comments]
+        joined_comments = " ".join(comment_texts)
+        response = openai.Completion.create(
+            engine="davinci",
+            prompt=f"Analyze the following comments and summarize the main topics discussed:\n\n{joined_comments}",
+            max_tokens=150
+        )
+        summary = response.choices[0].text.strip()
+        print(f"AI Analysis for post {unique_id}: {summary} (App Version: {app_version})")
+        # Save the summary to S3 or display it as needed
+        # Example: write_to_s3([{'post_id': unique_id, 'summary': summary}], 'NOC_analysis.csv')
+    except Exception as e:
+        print(f"Error during AI analysis: {e} (App Version: {app_version})")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
