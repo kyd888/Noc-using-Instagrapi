@@ -10,14 +10,15 @@
     <h1>NOC (Version {{ version }})</h1>
     <form id="login-form" method="POST">
         <label for="insta_username">Instagram Username:</label><br>
-        <input title="Username"> type="text" id="insta_username" name="insta_username"><br><br>
-        <input title="Password"> type="password" id="insta_password" name="insta_password"><br><br>
+        <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+        <label for="insta_password">Instagram Password:</label><br>
+        <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
         <button type="submit">Login</button>
     </form>
     
     <form id="monitor-form" style="display:none;">
         <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-        <input type="text" id="target_usernames" name="target_usernames"><br><br>
+        <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
         <button type="submit">Start Monitoring</button>
         <button type="button" id="stop-monitoring">Stop Monitoring</button>
     </form>
