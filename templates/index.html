@@ -4,46 +4,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <title>NOC (Version {{ version }})</title>
 </head>
 <body>
     <div class="logo-container">
         <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
     </div>
-    <div class="container">
-        <form id="login-form" method="POST">
-            <fieldset class="no-border">
-                <legend><h2>Login</h2></legend>
-                <label for="insta_username">Instagram Username:</label><br>
-                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-                <label for="insta_password">Instagram Password:</label><br>
-                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-                <button type="submit">→</button>
-            </fieldset>
-        </form>
-        
-        <div id="main-content" style="display: none;">
-            <div class="left-side">
-                <form id="monitor-form">
-                    <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-                    <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
-                    <button type="submit" id="start-monitoring">Start Monitoring</button>
-                    <button type="button" id="stop-monitoring" style="display: none;">Stop Monitoring</button>
-                </form>
-                <div id="account-posts-list">
-                    <!-- List of accounts and posts will be appended here -->
-                </div>
-            </div>
+    <form id="login-form" method="POST">
+        <fieldset class="no-border">
+            <legend><h2>Login</h2></legend>
+            <label for="insta_username">Instagram Username:</label><br>
+            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+            <label for="insta_password">Instagram Password:</label><br>
+            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+            <button type="submit"><span>→</span></button>
+        </fieldset>
+    </form>
 
-            <div class="right-side">
-                <h2>Scanned Comments</h2>
-                <div id="scanned-comments">
-                    <p id="comment-text"></p>
-                    <p id="comment-counter"></p>
-                </div>
+    <div id="main-content" style="display:none;">
+        <div id="left-panel">
+            <form id="monitor-form">
+                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
+                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
+            </form>
+            <div id="account-posts-list"></div>
+        </div>
+        <div id="right-panel">
+            <h2>Comments</h2>
+            <div id="scanned-comments">
+                <div id="comment-text"></div>
+                <div id="comment-counter"></div>
             </div>
         </div>
     </div>
 </body>
 </html>
-
