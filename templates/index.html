@@ -4,28 +4,31 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <title>NOC (Version {{ version }})</title>
 </head>
 <body>
     <div class="logo-container">
         <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
     </div>
-    <form id="login-form" method="POST">
-        <fieldset class="no-border">
-            <legend><h2>Login</h2></legend>
-            <label for="insta_username">Instagram Username:</label><br>
-            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-            <label for="insta_password">Instagram Password:</label><br>
-            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-            <button type="submit">Login</button>
-        </fieldset>
-    </form>
-    
-    <form id="monitor-form" style="display:none;">
-        <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-        <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
-        <button type="submit">Start Monitoring</button>
-        <button type="button" id="stop-monitoring">Stop Monitoring</button>
-    </form>
+    <div class="container">
+        <form id="login-form" method="POST">
+            <fieldset class="no-border">
+                <legend><h2>Login</h2></legend>
+                <label for="insta_username">Instagram Username:</label><br>
+                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+                <label for="insta_password">Instagram Password:</label><br>
+                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+                <button type="submit">Login</button>
+            </fieldset>
+        </form>
+        
+        <form id="monitor-form" style="display:none;">
+            <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+            <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+            <button type="submit">Start Monitoring</button>
+            <button type="button" id="stop-monitoring">Stop Monitoring</button>
+        </form>
+    </div>
 
     <h2>Status</h2>
     <div id="status">Not monitoring.</div>
@@ -40,5 +43,4 @@
 
     <div id="accounts_data"></div>
 </body>
-        <title>NOC (Version {{ version }})</title>
 </html>
