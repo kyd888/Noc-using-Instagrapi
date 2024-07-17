@@ -7,7 +7,7 @@ $(document).ready(function() {
             alert(response.status);
             if (response.status === 'Login successful') {
                 $('#login-form').hide();
-                $('#monitor-form').show();
+                $('#main-content').show();
                 $('#status').text('Logged in. You can now start monitoring.');
             }
         });
