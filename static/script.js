@@ -1,5 +1,7 @@
 $(document).ready(function() {
     let monitoring = false;
+    let commentsQueue = [];
+    let commentIndex = 0;
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -58,38 +60,56 @@ $(document).ready(function() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
-                    $('#accounts_data').empty();
-                    for (let username in data.comments) {
-                        $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
-                        const posts = data.comments[username];
-                        posts.forEach(post => {
-                            $('#accounts_data').append(`<h4>Post ${post.id}</h4>`);
-                            post.comments.forEach(comment => {
-                                $('#accounts_data').append(`<p>User: ${comment[0]}<br>Comment: ${comment[1]}<br>Time: ${comment[2]}</p><hr>`);
-                            });
-                        });
-                    }
+                    updateAccountPostsList(data.comments);
+                    updateCommentsQueue(data.comments);
                 });
 
                 $.get('/get_post_urls', function(data) {
-                    $('#accounts_data').empty();  // Clear previous data
-                    for (let username in data.post_urls) {
-                        $('#accounts_data').append(`<h3>Account: ${username}</h3>`);
-                        const urls = data.post_urls[username];
-                        urls.forEach(post => {
-                            $('#accounts_data').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-                        });
-                    }
-                    for (let username in data.last_refresh_time) {
-                        $('#accounts_data').append(`<h4>Last refresh time for ${username}: ${data.last_refresh_time[username]}</h4>`);
-                    }
-                    for (let username in data.refresh_messages) {
-                        $('#accounts_data').append(`<h4>Refresh message for ${username}: ${data.refresh_messages[username]}</h4>`);
-                    }
+                    updateAccountPostsList(data.post_urls);
                 });
 
                 checkStatus();
             }, 5000);
         }
     }
+
+    function updateAccountPostsList(data) {
+        $('#account-posts-list').empty();
+        for (let username in data) {
+            $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
+            const posts = data[username];
+            posts.forEach(post => {
+                $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+            });
+        }
+    }
+
+    function updateCommentsQueue(commentsData) {
+        commentsQueue = [];
+        for (let username in commentsData) {
+            const posts = commentsData[username];
+            posts.forEach(post => {
+                post.comments.forEach(comment => {
+                    commentsQueue.push(comment);
+                });
+            });
+        }
+        if (commentsQueue.length > 0) {
+            displayNextComment();
+        }
+    }
+
+    function displayNextComment() {
+        if (commentsQueue.length > 0) {
+            const comment = commentsQueue[commentIndex];
+            $('#comment-text').text(`User: ${comment[0]} - Comment: ${comment[1]}`);
+            $('#comment-counter').text(`Comment ${commentIndex + 1} of ${commentsQueue.length}`);
+            commentIndex = (commentIndex + 1) % commentsQueue.length;
+            setTimeout(displayNextComment, 3000); // Cycle through comments every 3 seconds
+        } else {
+            $('#comment-text').text('');
+            $('#comment-counter').text('');
+        }
+    }
 });
+
