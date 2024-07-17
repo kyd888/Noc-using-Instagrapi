@@ -3,38 +3,53 @@ $(document).ready(function() {
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
+        const $loginButton = $(this).find('button[type="submit"]');
+        $loginButton.text('Loading...').prop('disabled', true);
         $.post('/login', $(this).serialize(), function(response) {
             alert(response.status);
+            $loginButton.text('Login').prop('disabled', false);
             if (response.status === 'Login successful') {
                 $('#login-form').hide();
                 $('#main-content').show();
             }
+        }).fail(function() {
+            $loginButton.text('Login').prop('disabled', false);
         });
     });
 
     $('#monitor-form').submit(function(event) {
         event.preventDefault();
         if (!monitoring) {
+            const $startButton = $('#start-monitoring');
+            $startButton.text('Loading...').prop('disabled', true);
             const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
             $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
                 alert(response.status);
                 if (response.status === 'Monitoring started') {
                     monitoring = true;
-                    $('#start-monitoring').hide();
+                    $startButton.hide();
                     $('#stop-monitoring').show();
                     checkStatus();
+                } else {
+                    $startButton.text('Start Monitoring').prop('disabled', false);
                 }
+            }).fail(function() {
+                $startButton.text('Start Monitoring').prop('disabled', false);
             });
         }
     });
 
     $('#stop-monitoring').click(function() {
         if (monitoring) {
+            const $stopButton = $(this);
+            $stopButton.text('Loading...').prop('disabled', true);
             $.post('/stop_monitoring', function(response) {
                 alert(response.status);
                 monitoring = false;
-                $('#stop-monitoring').hide();
-                $('#start-monitoring').show();
+                $stopButton.text('Stop Monitoring').hide();
+                $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
+            }).fail(function() {
+                $stopButton.text('Stop Monitoring').prop('disabled', false);
             });
         }
     });
