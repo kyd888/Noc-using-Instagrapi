@@ -1,96 +1,45 @@
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
-    margin: 0;
-    padding: 0;
-    color: #333;
-}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NOC (Version {{ version }})</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
+    </div>
+    <h1>NOC (Version {{ version }})</h1>
+    <form id="login-form" method="POST">
+        <fieldset class="no-border">
+            <legend><h2>Login</h2></legend>
+            <label for="insta_username">Instagram Username:</label><br>
+            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+            <label for="insta_password">Instagram Password:</label><br>
+            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+            <button type="submit">Login</button>
+        </fieldset>
+    </form>
+    
+    <form id="monitor-form" style="display:none;">
+        <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+        <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+        <button type="submit">Start Monitoring</button>
+        <button type="button" id="stop-monitoring">Stop Monitoring</button>
+    </form>
 
-.logo-container {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-}
+    <h2>Status</h2>
+    <div id="status">Not monitoring.</div>
 
-.logo {
-    width: 50px; /* Adjust size as needed */
-    height: auto;
-}
+    <h2>CSV Data</h2>
+    <div id="csv_data">
+        {% for row in csv_data %}
+            <p>Account: {{ row.username }}<br>
+            <a href="{{ row.post_url }}" target="_blank">{{ row.post_url }}</a> ({{ row.post_id }})</p>
+        {% endfor %}
+    </div>
 
-h1 {
-    text-align: center;
-    color: #4CAF50;
-    margin-top: 20px;
-}
-
-form {
-    background: #fff;
-    padding: 20px;
-    margin: 20px auto;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-}
-
-.no-border {
-    border: none;
-    padding: 20px 0; /* Add padding to top and bottom */
-}
-
-.no-border legend {
-    font-size: 1.5em;
-    font-weight: bold;
-    text-align: center; /* Center the title */
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-label {
-    font-weight: bold;
-    display: block;
-    margin-top: 10px;
-}
-
-input[type="text"],
-input[type="password"] {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-button {
-    width: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 4px;
-    background-color: #4CAF50;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
-#status {
-    text-align: center;
-    font-size: 1.2em;
-    margin-top: 20px;
-}
-
-#csv_data, #accounts_data {
-    background: #fff;
-    padding: 20px;
-    margin: 20px auto;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    max-width: 800px;
-}
-
-h2 {
-    text-align: center;
-    color: #333;
-}
+    <div id="accounts_data"></div>
+</body>
+</html>
