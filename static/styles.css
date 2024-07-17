@@ -96,7 +96,7 @@ button span {
 }
 
 button:before {
-    content: '→'; /* Unicode arrow character */
+    content: '';
     font-size: 20px; /* Adjust the size as needed */
 }
 
