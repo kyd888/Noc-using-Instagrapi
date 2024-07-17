@@ -9,7 +9,7 @@ from threading import Thread
 import requests
 import boto3
 from io import StringIO
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
 
@@ -45,19 +45,24 @@ def login():
     global client, s3, bucket_name
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
+    
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
         aws_access_key = file.read().strip()
+    
     # Read AWS secret key from secret file
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
-    aws_region = 'us-east-2'
-    bucket_name = 'noc-test-user1'
+    
+    aws_region = 'us-east-1'
+    bucket_name = 'noc-user-data3'
+    
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
+        
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -190,10 +195,16 @@ def write_to_s3(data, filename):
     csv_buffer = StringIO()
     df.to_csv(csv_buffer, index=False)
     try:
+        print(f"Attempting to write data to S3 bucket {bucket_name} (App Version: {app_version})")
+        print(f"Data being written:\n{df}")  # Log the data being written
         s3.put_object(Bucket=bucket_name, Key=filename, Body=csv_buffer.getvalue())
         print(f"Data written to S3 bucket {bucket_name} (App Version: {app_version})")
     except NoCredentialsError:
         print("Credentials not available")
+    except BotoClientError as e:
+        print(f"Boto Client Error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def monitor_new_posts(user_id, username):
     global comments_data, monitoring, post_urls, last_refresh_time, refresh_messages, csv_data_global
@@ -219,8 +230,8 @@ def monitor_new_posts(user_id, username):
                 print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
                 # Write to S3 and store locally
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
-                csv_data_global.append({'username': username, 'post_id': unique_id, 'post_url': post_url})
-                write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
+                csv_data_global.extend(csv_data)
+                write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
                 print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 # Analyze comments using OpenAI
                 analyze_comments_with_openai(comments, unique_id)
@@ -252,7 +263,8 @@ def monitor_new_posts(user_id, username):
                     print(refresh_message)
                     # Write to S3 and store locally
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
-                    write_to_s3(csv_data, 'NOC_data.csv')  # Updated to include filename
+                    csv_data_global.extend(csv_data)
+                    write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
                     print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
@@ -286,3 +298,4 @@ def analyze_comments_with_openai(comments, unique_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port, debug=False)
+
