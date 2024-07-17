@@ -231,14 +231,14 @@ def monitor_new_posts(user_id, username):
                 # Write to S3 and store locally
                 csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
                 csv_data_global.extend(csv_data)
-                write_to_s3(csv_data_global, 'NOC_data2.csv')  # Updated to include filename
+                write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
                 print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 # Analyze comments using OpenAI
                 analyze_comments_with_openai(comments, unique_id)
             else:
                 print(f"No comments found for post {unique_id} (App Version: {app_version})")
             last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
-        sleep_interval = random.randint(60, 120)  # Randomize interval between 60 to 120 seconds
+        sleep_interval = random.randint(30, 60)  # Reduced interval between 30 to 60 seconds
         print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
         time.sleep(sleep_interval)
         cycle_count += 1  # Increment cycle counter
@@ -264,7 +264,7 @@ def monitor_new_posts(user_id, username):
                     # Write to S3 and store locally
                     csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
                     csv_data_global.extend(csv_data)
-                    write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
+                    write_to_s3(csv_data_global, 'NOC_data2.csv')  # Updated to include filename
                     print(f"CSV Data: {csv_data} (App Version: {app_version})")
                 else:
                     print(f"No new comments found for post {post['id']} (App Version: {app_version})")
@@ -298,4 +298,3 @@ def analyze_comments_with_openai(comments, unique_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port, debug=False)
-
