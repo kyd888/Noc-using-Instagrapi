@@ -63,16 +63,18 @@ input[type="password"] {
 button {
     width: 100%;
     padding: 10px;
-    border: none;
+    border: 2px solid #4CAF50; /* Green border */
     border-radius: 4px;
-    background-color: #4CAF50;
-    color: white;
+    background-color: white; /* White background */
+    color: #4CAF50; /* Green text color */
     font-size: 16px;
     cursor: pointer;
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effect */
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #4CAF50; /* Green background on hover */
+    color: white; /* White text on hover */
 }
 
 #status {
