@@ -54,8 +54,8 @@ def login():
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
     
-    aws_region = 'us-east-1'
-    bucket_name = 'noc-user-data3'
+    aws_region = 'us-east-2'
+    bucket_name = 'noc-test-user1'
     
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
