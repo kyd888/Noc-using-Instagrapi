@@ -108,15 +108,24 @@ button:hover {
     padding-left: 20px;
 }
 
-#csv_data, #accounts_data {
+#account-posts-list {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#scanned-comments {
     background: #fff;
     padding: 20px;
     margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    min-height: 150px;
 }
 
 h2 {
     text-align: center;
     color: #333;
 }
+
