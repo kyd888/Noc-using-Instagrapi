@@ -6,6 +6,17 @@ body {
     color: #333;
 }
 
+.logo-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.logo {
+    width: 50px; /* Adjust size as needed */
+    height: auto;
+}
+
 h1 {
     text-align: center;
     color: #4CAF50;
