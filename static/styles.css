@@ -1,7 +1,6 @@
 body {
     font-family: Arial, sans-serif;
-    background: url('{{ url_for('static', filename='background.png') }}') no-repeat center center fixed;
-    background-size: cover;
+    background: linear-gradient(to bottom, #d3d3d3, #ffffff);
     margin: 0;
     padding: 0;
     color: #333;
