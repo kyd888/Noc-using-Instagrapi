@@ -41,7 +41,7 @@ form {
     margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
+    max-width: 400px;
 }
 
 .no-border {
@@ -65,7 +65,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: 91%;
+    width: 85%;
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -109,21 +109,10 @@ button:hover {
     padding-left: 20px;
 }
 
-#status {
-    text-align: center;
-    font-size: 1.2em;
-    margin-top: 20px;
-}
-
 #csv_data, #accounts_data {
     background: #fff;
     padding: 20px;
     margin: 20px auto;
     border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
+    box-shadow: 0
 
-h2 {
-    text-align: center;
-    color: #333;
-}
