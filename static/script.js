@@ -8,30 +8,35 @@ $(document).ready(function() {
             if (response.status === 'Login successful') {
                 $('#login-form').hide();
                 $('#main-content').show();
-                $('#status').text('Logged in. You can now start monitoring.');
             }
         });
     });
 
     $('#monitor-form').submit(function(event) {
         event.preventDefault();
-        const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
-        $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
-            alert(response.status);
-            if (response.status === 'Monitoring started') {
-                $('#status').text('Monitoring has started.');
-                monitoring = true;
-                checkStatus();
-            }
-        });
+        if (!monitoring) {
+            const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+            $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
+                alert(response.status);
+                if (response.status === 'Monitoring started') {
+                    monitoring = true;
+                    $('#start-monitoring').hide();
+                    $('#stop-monitoring').show();
+                    checkStatus();
+                }
+            });
+        }
     });
 
     $('#stop-monitoring').click(function() {
-        $.post('/stop_monitoring', function(response) {
-            alert(response.status);
-            $('#status').text('Monitoring has stopped.');
-            monitoring = false;
-        });
+        if (monitoring) {
+            $.post('/stop_monitoring', function(response) {
+                alert(response.status);
+                monitoring = false;
+                $('#stop-monitoring').hide();
+                $('#start-monitoring').show();
+            });
+        }
     });
 
     function checkStatus() {
