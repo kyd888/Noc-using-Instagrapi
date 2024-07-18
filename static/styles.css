@@ -33,7 +33,7 @@ form {
     margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
+    max-width: 600px;
 }
 
 .no-border {
@@ -57,7 +57,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: 92%; /* Make input fields the same width as the buttons */
+    width: 91.5%; /* Make input fields the same width as the buttons */
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
