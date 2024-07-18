@@ -54,7 +54,7 @@ def login():
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
     
-    aws_region = 'us-east-1'
+    aws_region = 'us-east-2'
     bucket_name = 'noc-user-data1'
     
     try:
