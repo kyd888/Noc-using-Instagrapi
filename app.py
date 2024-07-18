@@ -54,8 +54,8 @@ def login():
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
     
-    aws_region = 'us-east-2'
-    bucket_name = 'noc-user-data1'
+    aws_region = 'us-east-1'
+    bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
     
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
@@ -265,7 +265,7 @@ def monitor_new_posts(user_id, username):
                         # Write to S3 and store locally
                         csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
                         csv_data_global.extend(csv_data)
-                        write_to_s3(csv_data_global, 'NOC_data3.csv')  # Updated to include filename
+                        write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
                         print(f"CSV Data: {csv_data} (App Version: {app_version})")
                     else:
                         print(f"No new comments found for post {post['id']} (App Version: {app_version})")
@@ -305,3 +305,4 @@ def analyze_comments_with_openai(comments, unique_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port, debug=False)
+
