@@ -55,7 +55,7 @@ def login():
         aws_secret_key = file.read().strip()
     
     aws_region = 'us-east-1'
-    bucket_name = 'noc-user-data3'
+    bucket_name = 'noc-user-data1'
     
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
@@ -270,7 +270,11 @@ def monitor_new_posts(user_id, username):
                     else:
                         print(f"No new comments found for post {post['id']} (App Version: {app_version})")
                 except Exception as e:
-                    print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
+                    if 'Please wait a few minutes before you try again' in str(e):
+                        print(f"Rate limit hit. Waiting for {break_duration // 60} minutes. (App Version: {app_version})")
+                        time.sleep(break_duration)
+                    else:
+                        print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
 
             if interaction_count >= break_after_actions:
                 print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
