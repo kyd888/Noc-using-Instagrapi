@@ -54,8 +54,8 @@ def login():
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
     
-    aws_region = 'us-east-2'
-    bucket_name = 'noc-test-user1'
+    aws_region = 'us-east-1'
+    bucket_name = 'noc-user-data3'
     
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
@@ -212,69 +212,72 @@ def monitor_new_posts(user_id, username):
     cycle_count = 0  # Initialize cycle counter
     interaction_count = 0  # Initialize interaction counter
 
-    while monitoring.get(username, False) and cycle_count < max_cycles and interaction_count < max_interactions:
-        latest_post = get_latest_post(user_id)
-        interaction_count += 1  # Increment interaction counter
-        if latest_post and latest_post.pk != last_post_id:
-            last_post_id = latest_post.pk
-            post_url = f"https://www.instagram.com/p/{latest_post.code}/"
-            unique_id = str(uuid.uuid4().int)[:4]
-            post_urls[username].append({'url': post_url, 'id': unique_id})
-            print(f"Found new post: {post_url} (App Version: {app_version})")
-            comments = get_comments(latest_post.pk, 10)
-            # Filter out comments from the target user
-            comments = [c for c in comments if c[0] != username]
+    while monitoring.get(username, False):
+        try:
+            latest_post = get_latest_post(user_id)
             interaction_count += 1  # Increment interaction counter
-            if comments:
-                comments_data[username].append({'id': unique_id, 'comments': comments})
-                print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
-                # Write to S3 and store locally
-                csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
-                csv_data_global.extend(csv_data)
-                write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
-                print(f"CSV Data: {csv_data} (App Version: {app_version})")
-                # Analyze comments using OpenAI
-                analyze_comments_with_openai(comments, unique_id)
-            else:
-                print(f"No comments found for post {unique_id} (App Version: {app_version})")
-            last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
-        sleep_interval = random.randint(30, 60)  # Reduced interval between 30 to 60 seconds
-        print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
-        time.sleep(sleep_interval)
-        cycle_count += 1  # Increment cycle counter
-
-        for post in post_urls[username]:
-            post_code = post['url'].split('/')[-2]
-            try:
-                post_media_id = client.media_pk_from_code(post_code)
-                new_comments = get_comments(post_media_id, 10)
+            if latest_post and latest_post.pk != last_post_id:
+                last_post_id = latest_post.pk
+                post_url = f"https://www.instagram.com/p/{latest_post.code}/"
+                unique_id = str(uuid.uuid4().int)[:4]
+                post_urls[username].append({'url': post_url, 'id': unique_id})
+                print(f"Found new post: {post_url} (App Version: {app_version})")
+                comments = get_comments(latest_post.pk, 10)
                 # Filter out comments from the target user
-                new_comments = [c for c in new_comments if c[0] != username]
+                comments = [c for c in comments if c[0] != username]
                 interaction_count += 1  # Increment interaction counter
-                if new_comments:
-                    # Ensure we maintain the structure of the comments data
-                    for post_data in comments_data[username]:
-                        if post_data['id'] == post['id']:
-                            post_data['comments'] = new_comments
-                            break
-                    refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
-                    refresh_messages[username].clear()
-                    refresh_messages[username].append(refresh_message)
-                    print(refresh_message)
+                if comments:
+                    comments_data[username].append({'id': unique_id, 'comments': comments})
+                    print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
                     # Write to S3 and store locally
-                    csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+                    csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
                     csv_data_global.extend(csv_data)
-                    write_to_s3(csv_data_global, 'NOC_data2.csv')  # Updated to include filename
+                    write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
                     print(f"CSV Data: {csv_data} (App Version: {app_version})")
+                    # Analyze comments using OpenAI
+                    analyze_comments_with_openai(comments, unique_id)
                 else:
-                    print(f"No new comments found for post {post['id']} (App Version: {app_version})")
-            except Exception as e:
-                print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
+                    print(f"No comments found for post {unique_id} (App Version: {app_version})")
+                last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
+            sleep_interval = random.randint(30, 60)  # Reduced interval between 30 to 60 seconds
+            print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
+            time.sleep(sleep_interval)
+            cycle_count += 1  # Increment cycle counter
 
-        if interaction_count >= break_after_actions:
-            print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-            time.sleep(break_duration)  # Sleep for the break duration
-            interaction_count = 0  # Reset interaction counter after the break
+            for post in post_urls[username]:
+                post_code = post['url'].split('/')[-2]
+                try:
+                    post_media_id = client.media_pk_from_code(post_code)
+                    new_comments = get_comments(post_media_id, 10)
+                    # Filter out comments from the target user
+                    new_comments = [c for c in new_comments if c[0] != username]
+                    interaction_count += 1  # Increment interaction counter
+                    if new_comments:
+                        # Ensure we maintain the structure of the comments data
+                        for post_data in comments_data[username]:
+                            if post_data['id'] == post['id']:
+                                post_data['comments'] = new_comments
+                                break
+                        refresh_message = f"Refreshing comments for post {post['id']} at {time.strftime('%Y-%m-%d %H:%M:%S')} (App Version: {app_version})"
+                        refresh_messages[username].clear()
+                        refresh_messages[username].append(refresh_message)
+                        print(refresh_message)
+                        # Write to S3 and store locally
+                        csv_data = [{'username': username, 'post_id': post['id'], 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+                        csv_data_global.extend(csv_data)
+                        write_to_s3(csv_data_global, 'NOC_data.csv')  # Updated to include filename
+                        print(f"CSV Data: {csv_data} (App Version: {app_version})")
+                    else:
+                        print(f"No new comments found for post {post['id']} (App Version: {app_version})")
+                except Exception as e:
+                    print(f"Error fetching media ID for post code {post_code}: {e} (App Version: {app_version})")
+
+            if interaction_count >= break_after_actions:
+                print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
+                time.sleep(break_duration)  # Sleep for the break duration
+                interaction_count = 0  # Reset interaction counter after the break
+        except Exception as e:
+            print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
 
     monitoring[username] = False  # Stop monitoring after reaching max cycles or interactions
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
