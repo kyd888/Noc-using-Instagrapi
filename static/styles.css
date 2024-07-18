@@ -84,7 +84,7 @@ button:hover {
 #main-content {
     display: flex;
     justify-content: space-between;
-    width: 90%;
+    width: 100%;
 }
 
 #left-panel, #right-panel {
