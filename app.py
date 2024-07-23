@@ -234,6 +234,16 @@ def monitor_new_posts(user_id, username):
         except Exception as e:
             print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
 
+def scan_for_new_post(user_id, last_post_id):
+    latest_post = get_latest_post(user_id)
+    if latest_post and latest_post.pk != last_post_id:
+        post_url = f"https://www.instagram.com/p/{latest_post.code}/"
+        unique_id = str(uuid.uuid4().int)[:4]
+        post_urls[username].append({'url': post_url, 'id': unique_id})
+        print(f"Found new post: {post_url} (App Version: {app_version})")
+        return latest_post, post_url, unique_id
+    return None, None, None
+
 def analyze_comments_with_openai(comments, unique_id):
     try:
         comment_texts = [comment[1] for comment in comments]
