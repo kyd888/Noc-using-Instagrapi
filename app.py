@@ -244,6 +244,21 @@ def scan_for_new_post(user_id, last_post_id):
         return latest_post, post_url, unique_id
     return None, None, None
 
+def handle_new_post(username, post_url, unique_id, media_id):
+    global comments_data, csv_data_global
+    comments = get_comments(media_id, 10)
+    comments = [c for c in comments if c[0] != username]
+    if comments:
+        comments_data[username].append({'id': unique_id, 'comments': comments})
+        print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
+        csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
+        csv_data_global.extend(csv_data)
+        write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {csv_data} (App Version: {app_version})")
+        analyze_comments_with_openai(comments, unique_id)
+    else:
+        print(f"No comments found for post {unique_id} (App Version: {app_version})")
+
 def analyze_comments_with_openai(comments, unique_id):
     try:
         comment_texts = [comment[1] for comment in comments]
