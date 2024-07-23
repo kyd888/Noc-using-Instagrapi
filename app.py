@@ -94,7 +94,6 @@ def start_monitoring():
     if not session.get('logged_in'):
         return jsonify({'status': 'Please login first', 'version': app_version}), 403
 
-    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
     target_usernames = request.form.get('target_usernames')
     if not target_usernames:
         return jsonify({'status': 'No target usernames provided', 'version': app_version}), 400
@@ -106,15 +105,19 @@ def start_monitoring():
         if user_id is None:
             return jsonify({'status': f'User {username} not found or error occurred', 'version': app_version}), 404
 
-        monitoring[username] = True
-        refresh_messages[username] = []
-        comments_data[username] = []
-        post_urls[username] = []
-        last_refresh_time[username] = None
-        thread = Thread(target=monitor_new_posts, args=(user_id, username))
-        thread.start()
+        start_monitoring_for_user(user_id, username)
     
     return jsonify({'status': 'Monitoring started', 'version': app_version})
+
+def start_monitoring_for_user(user_id, username):
+    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
+    monitoring[username] = True
+    refresh_messages[username] = []
+    comments_data[username] = []
+    post_urls[username] = []
+    last_refresh_time[username] = None
+    thread = Thread(target=post_monitoring_loop, args=(user_id, username))
+    thread.start()
 
 @app.route('/stop_monitoring', methods=['POST'])
 def stop_monitoring():
@@ -206,7 +209,7 @@ def write_to_s3(data, filename):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def monitor_new_posts(user_id, username):
+def post_monitoring_loop(user_id, username):
     global monitoring, last_refresh_time, refresh_messages, csv_data_global
     last_post_id = None
     cycle_count = 0
@@ -233,6 +236,9 @@ def monitor_new_posts(user_id, username):
 
         except Exception as e:
             print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
+
+    monitoring[username] = False
+    print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
 def scan_for_new_post(user_id, last_post_id):
     latest_post = get_latest_post(user_id)
@@ -277,5 +283,4 @@ def analyze_comments_with_openai(comments, unique_id):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    app.run(host='0.0.0.0', port=port, debug=False)
-
+    app.run(host='0.0.0.0', port=port)
