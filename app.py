@@ -75,9 +75,6 @@ def login():
             "device_guid": str(uuid.uuid4())
         })
 
-        # Set location to Broken Arrow, Oklahoma
-        client.set_location(36.0526, -95.7908)  # Latitude and Longitude of Broken Arrow, OK
-
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         
