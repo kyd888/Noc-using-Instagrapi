@@ -60,20 +60,24 @@ def login():
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
-        
+
         # Set device settings to simulate an iPhone 12 Pro
         client.set_device({
+            "manufacturer": "Apple",
+            "model": "iPhone12,3",
+            "device": "d75f3509-4827-4f5e-9431-fd5b60c42305",
             "app_version": "153.0.0.34.96",
             "android_version": 29,
             "android_release": "10",
             "dpi": "440dpi",
             "resolution": "1080x2340",
-            "manufacturer": "Apple",
-            "model": "iPhone12,3",
             "cpu": "apple",
             "version_code": "222826132",
             "device_guid": str(uuid.uuid4())
         })
+
+        # Debugging: Print the device settings
+        print(f"Device settings: {client.device}")
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
