@@ -2,9 +2,15 @@ services:
   - type: web
     name: your-service-name
     env: python
+    region: ohio
     buildCommand:
       - apt-get update && apt-get install -y build-essential gcc libatlas-base-dev gfortran
       - pip install --upgrade pip
       - pip install -r requirements.txt
       - bash fix_flask.sh
     startCommand: gunicorn app:app
+        envVars:
+      - key: SECRET_KEY
+        value: your_secret_key
+      - key: OPENAI_API_KEY
+        value: your_openai_api_key
