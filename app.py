@@ -169,7 +169,7 @@ def search_user(username):
         return None
 
 def get_latest_post(user_id):
-    posts = client.user_medias(user_id, amount=1)
+    posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
     if posts:
         print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
     else:
@@ -178,7 +178,7 @@ def get_latest_post(user_id):
 
 def get_comments(media_id, count=10):
     try:
-        comments = client.media_comments(media_id, amount=count)
+        comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
         if comments:
             comments_data = [
                 (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
