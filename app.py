@@ -154,6 +154,10 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             print(f"Request failed: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
+        except ValueError as e:
+            print(f"JSON decode error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
+            time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
+            delay *= 2  # Exponential backoff
     raise Exception("Maximum retries reached")
 
 def get_user_id_with_retry(username):
