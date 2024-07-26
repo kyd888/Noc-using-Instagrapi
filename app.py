@@ -31,7 +31,9 @@ csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
-break_duration = 1800  # Break duration in seconds (30 minutes)
+break_duration = 3600  # Break duration in seconds (1 hour)
+long_break_probability = 0.1  # Probability of taking a longer break
+long_break_duration = 7200  # Longer break duration in seconds (2 hours)
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
@@ -255,14 +257,18 @@ def post_monitoring_loop(user_id, username):
                 handle_new_post(username, post_url, unique_id, latest_post.pk)
                 last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            sleep_interval = random.randint(30, 60)
+            sleep_interval = random.randint(180, 540)  # Increase sleep interval to 60-120 seconds
             print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
             time.sleep(sleep_interval)
             cycle_count += 1
 
             if interaction_count >= break_after_actions:
-                print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                time.sleep(break_duration)
+                if random.random() < long_break_probability:
+                    print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
+                    time.sleep(long_break_duration)
+                else:
+                    print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
+                    time.sleep(break_duration)
                 interaction_count = 0
 
         except Exception as e:
