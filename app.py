@@ -12,7 +12,6 @@ from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
-import json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -197,12 +196,16 @@ def search_user(username):
         return None
 
 def get_latest_post(user_id):
-    posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
-    if posts:
-        print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
-    else:
-        print("No posts found. (App Version: {app_version})")
-    return posts[0] if posts else None
+    try:
+        posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
+        if posts:
+            print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
+        else:
+            print("No posts found. (App Version: {app_version})")
+        return posts[0] if posts else None
+    except Exception as e:
+        print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
+        return None
 
 def get_comments(media_id, count=10):
     try:
@@ -245,7 +248,7 @@ def post_monitoring_loop(user_id, username):
 
     while monitoring.get(username, False):
         try:
-            latest_post, post_url, unique_id = scan_for_new_post(user_id, last_post_id)
+            latest_post, post_url, unique_id = scan_for_new_post(user_id, last_post_id, username)
             if latest_post:
                 last_post_id = latest_post.pk
                 interaction_count += 1
@@ -268,7 +271,7 @@ def post_monitoring_loop(user_id, username):
     monitoring[username] = False
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
-def scan_for_new_post(user_id, last_post_id):
+def scan_for_new_post(user_id, last_post_id, username):
     latest_post = get_latest_post(user_id)
     if latest_post and latest_post.pk != last_post_id:
         post_url = f"https://www.instagram.com/p/{latest_post.code}/"
