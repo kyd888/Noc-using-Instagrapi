@@ -63,10 +63,12 @@ $(document).ready(function() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
+                    console.log('Comments Data:', data);  // Debugging line
                     updateCommentsQueue(data.comments);
                 });
 
                 $.get('/get_post_urls', function(data) {
+                    console.log('Post URLs Data:', data);  // Debugging line
                     updateAccountPostsList(data.post_urls);
                 });
 
@@ -108,6 +110,7 @@ $(document).ready(function() {
                 }
             }
         }
+        console.log('Updated Comments Queue:', commentsQueue);  // Debugging line
         if (commentsQueue.length > 0) {
             displayNextComment();
         }
