@@ -32,7 +32,8 @@ countdown_status = {}  # Store countdown status for each user
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
-break_duration = 3600  # Break duration in seconds (1 hour)
+break_duration_min = 1800  # Minimum break duration in seconds (30 minutes)
+break_duration_max = 3600  # Maximum break duration in seconds (60 minutes)
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
 
@@ -273,6 +274,7 @@ def post_monitoring_loop(user_id, username):
             cycle_count += 1
 
             if interaction_count >= break_after_actions:
+                break_duration = random.randint(break_duration_min, break_duration_max)  # Random break duration between 30 and 60 minutes
                 if random.random() < long_break_probability:
                     print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
                     countdown_status[username] = long_break_duration
@@ -296,7 +298,7 @@ def post_monitoring_loop(user_id, username):
 
 def scan_for_new_post(user_id, last_post_id, username):
     latest_post = get_latest_post(user_id)
-    if (latest_post and latest_post.pk != last_post_id):
+    if latest_post and latest_post.pk != last_post_id:
         post_url = f"https://www.instagram.com/p/{latest_post.code}/"
         unique_id = str(uuid.uuid4().int)[:4]
         post_urls[username].append({'url': post_url, 'id': unique_id})
