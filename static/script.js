@@ -119,6 +119,7 @@ $(document).ready(function() {
 
     function updateCountdown() {
         $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
+        clearInterval(countdownInterval); // Clear any existing interval to avoid multiple intervals running
         countdownInterval = setInterval(() => {
             countdownValue--;
             $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
@@ -128,3 +129,4 @@ $(document).ready(function() {
         }, 1000);
     }
 });
+
