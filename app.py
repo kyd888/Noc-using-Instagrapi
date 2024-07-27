@@ -220,12 +220,12 @@ def get_comments(media_id, count=10):
     try:
         comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
         if comments:
-            comments_data = [
+            comments_data_list = [
                 (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
                 for comment in comments
             ]
-            print(f"Fetched {len(comments_data)} comments for media ID {media_id} (App Version: {app_version})")
-            return comments_data
+            print(f"Fetched {len(comments_data_list)} comments for media ID {media_id} (App Version: {app_version})")
+            return comments_data_list
         else:
             print(f"No comments found for media ID {media_id} (App Version: {app_version})")
             return []
@@ -250,7 +250,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, countdown_status
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, countdown_status, comments_data
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -264,7 +264,7 @@ def post_monitoring_loop(user_id, username):
                 handle_new_post(username, post_url, unique_id, latest_post.pk)
                 last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            sleep_interval = random.randint(180, 540)  # Increase sleep interval to 180-540 seconds
+            sleep_interval = random.randint(300, 900)  # Increase sleep interval to 300-900 seconds (5-15 minutes)
             print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
             countdown_status[username] = sleep_interval
             for i in range(sleep_interval, 0, -1):
