@@ -29,6 +29,7 @@
                 <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
             </form>
             <div id="account-posts-list"></div>
+            <div id="countdown-timer" style="margin-top: 20px; font-weight: bold;"></div> <!-- Countdown timer display -->
         </div>
         <div id="right-panel">
             <h2>Comments</h2>
@@ -36,51 +37,7 @@
                 <div id="comment-text"></div>
                 <div id="comment-counter"></div>
             </div>
-            <div id="countdown">
-                <h3>Next Monitoring Cycle:</h3>
-                <div id="countdown-timer"></div>
-            </div>
         </div>
     </div>
-
-    <script>
-        $(document).ready(function() {
-            function fetchComments() {
-                $.get('/get_comments', function(data) {
-                    const commentsData = data.comments;
-                    let commentText = '';
-                    let commentCounter = 0;
-                    for (const [username, comments] of Object.entries(commentsData)) {
-                        commentCounter += comments.length;
-                        for (const comment of comments) {
-                            commentText += `<p><strong>${comment[0]}</strong>: ${comment[1]} <em>${comment[2]}</em></p>`;
-                        }
-                    }
-                    $('#comment-text').html(commentText);
-                    $('#comment-counter').text(`Total comments: ${commentCounter}`);
-                });
-            }
-
-            function fetchCountdown() {
-                $.get('/get_countdown', function(data) {
-                    const countdownStatus = data.countdown_status;
-                    if (countdownStatus) {
-                        let countdownText = '';
-                        for (const [user, time] of Object.entries(countdownStatus)) {
-                            countdownText += `${user}: ${time}s<br>`;
-                        }
-                        $('#countdown-timer').html(countdownText);
-                    } else {
-                        $('#countdown-timer').html('No active countdowns.');
-                    }
-                });
-            }
-
-            setInterval(fetchComments, 10000); // Fetch comments every 10 seconds
-            setInterval(fetchCountdown, 1000); // Fetch countdown status every second
-
-            // Other JavaScript code for handling form submissions, etc.
-        });
-    </script>
 </body>
 </html>
