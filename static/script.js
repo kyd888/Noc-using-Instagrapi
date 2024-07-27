@@ -112,6 +112,7 @@ $(document).ready(function() {
         }
         console.log('Updated Comments Queue:', commentsQueue);  // Debugging line
         if (commentsQueue.length > 0) {
+            commentIndex = 0;  // Reset the index to start from the first comment
             displayNextComment();
         }
     }
@@ -124,7 +125,7 @@ $(document).ready(function() {
             commentIndex = (commentIndex + 1) % commentsQueue.length;
             setTimeout(displayNextComment, 3000); // Cycle through comments every 3 seconds
         } else {
-            $('#comment-text').text('');
+            $('#comment-text').text('No comments available.');
             $('#comment-counter').text('');
         }
     }
