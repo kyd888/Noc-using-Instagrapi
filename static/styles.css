@@ -111,3 +111,10 @@ h2 {
     font-size: 1.2em;
     margin-top: 10px;
 }
+
+#countdown-timer {
+    text-align: center;
+    font-size: 1.2em;
+    margin-top: 10px;
+    color: #333;
+}
