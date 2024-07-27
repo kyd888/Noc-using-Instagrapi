@@ -36,7 +36,34 @@
                 <div id="comment-text"></div>
                 <div id="comment-counter"></div>
             </div>
+            <div id="countdown">
+                <h3>Next Monitoring Cycle:</h3>
+                <div id="countdown-timer"></div>
+            </div>
         </div>
     </div>
+
+    <script>
+        $(document).ready(function() {
+            function fetchCountdown() {
+                $.get('/get_countdown', function(data) {
+                    const countdownStatus = data.countdown_status;
+                    if (countdownStatus) {
+                        let countdownText = '';
+                        for (const [user, time] of Object.entries(countdownStatus)) {
+                            countdownText += `${user}: ${time}s<br>`;
+                        }
+                        $('#countdown-timer').html(countdownText);
+                    } else {
+                        $('#countdown-timer').html('No active countdowns.');
+                    }
+                });
+            }
+
+            setInterval(fetchCountdown, 1000); // Fetch countdown status every second
+
+            // Other JavaScript code for handling form submissions, etc.
+        });
+    </script>
 </body>
 </html>
