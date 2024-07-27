@@ -3,6 +3,7 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
     let countdownInterval;
+    let countdownValue = 0;
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -32,7 +33,6 @@ $(document).ready(function() {
                     monitoring = true;
                     $startButton.hide();
                     $('#stop-monitoring').show();
-                    startCountdown();  // Start countdown when monitoring starts
                     checkStatus();
                 } else {
                     $startButton.text('Start Monitoring').prop('disabled', false);
@@ -50,9 +50,10 @@ $(document).ready(function() {
             $.post('/stop_monitoring', function(response) {
                 alert(response.status);
                 monitoring = false;
-                clearInterval(countdownInterval);  // Stop countdown when monitoring stops
                 $stopButton.text('Stop Monitoring').hide();
                 $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
+                clearInterval(countdownInterval); // Clear the countdown interval
+                $('#countdown-timer').text(''); // Clear the countdown display
             }).fail(function() {
                 $stopButton.text('Stop Monitoring').prop('disabled', false);
             });
@@ -61,58 +62,44 @@ $(document).ready(function() {
 
     function checkStatus() {
         if (monitoring) {
-            setTimeout(function() {
-                $.get('/get_comments', function(data) {
-                    console.log('Comments Data:', data);  // Debugging line
-                    updateCommentsQueue(data.comments);
-                });
+            $.get('/get_comments', function(data) {
+                updateCommentsQueue(data.comments);
+            });
 
-                $.get('/get_post_urls', function(data) {
-                    console.log('Post URLs Data:', data);  // Debugging line
-                    updateAccountPostsList(data.post_urls);
-                });
+            $.get('/get_post_urls', function(data) {
+                updateAccountPostsList(data.post_urls);
+                if (data.seconds_until_next_cycle !== undefined) {
+                    countdownValue = data.seconds_until_next_cycle;
+                    updateCountdown();
+                }
+            });
 
-                checkStatus();
-            }, 5000);
+            setTimeout(checkStatus, 60000); // Check status every 60 seconds
         }
     }
 
     function updateAccountPostsList(data) {
         $('#account-posts-list').empty();
         for (let username in data) {
-            if (data.hasOwnProperty(username)) {
-                $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
-                const posts = data[username];
-                if (Array.isArray(posts)) {
-                    posts.forEach(post => {
-                        if (post.url && post.id) {
-                            $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-                        }
-                    });
-                }
-            }
+            $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
+            const posts = data[username];
+            posts.forEach(post => {
+                $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+            });
         }
     }
 
     function updateCommentsQueue(commentsData) {
         commentsQueue = [];
         for (let username in commentsData) {
-            if (commentsData.hasOwnProperty(username)) {
-                const posts = commentsData[username];
-                if (Array.isArray(posts)) {
-                    posts.forEach(post => {
-                        if (Array.isArray(post.comments)) {
-                            post.comments.forEach(comment => {
-                                commentsQueue.push(comment);
-                            });
-                        }
-                    });
-                }
-            }
+            const posts = commentsData[username];
+            posts.forEach(post => {
+                post.comments.forEach(comment => {
+                    commentsQueue.push(comment);
+                });
+            });
         }
-        console.log('Updated Comments Queue:', commentsQueue);  // Debugging line
         if (commentsQueue.length > 0) {
-            commentIndex = 0;  // Reset the index to start from the first comment
             displayNextComment();
         } else {
             $('#comment-text').text('No comments available.');
@@ -127,25 +114,17 @@ $(document).ready(function() {
             $('#comment-counter').text(`Comment ${commentIndex + 1} of ${commentsQueue.length}`);
             commentIndex = (commentIndex + 1) % commentsQueue.length;
             setTimeout(displayNextComment, 3000); // Cycle through comments every 3 seconds
-        } else {
-            $('#comment-text').text('No comments available.');
-            $('#comment-counter').text('');
         }
     }
 
-    function startCountdown() {
-        clearInterval(countdownInterval);  // Clear any existing intervals
-        let interval = Math.floor(Math.random() * (3600 - 1800 + 1)) + 1800;  // Random interval between 30 and 60 minutes
-        $('#countdown-timer').text(`${interval} seconds until next monitoring cycle`);
-
-        countdownInterval = setInterval(function() {
-            interval--;
-            $('#countdown-timer').text(`${interval} seconds until next monitoring cycle`);
-            if (interval <= 0) {
-                clearInterval(countdownInterval);
-                startCountdown();
+    function updateCountdown() {
+        $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
+        countdownInterval = setInterval(() => {
+            countdownValue--;
+            $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
+            if (countdownValue <= 0) {
+                clearInterval(countdownInterval); // Clear the interval when countdown reaches zero
             }
         }, 1000);
     }
 });
-
