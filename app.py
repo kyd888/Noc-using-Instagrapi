@@ -155,12 +155,17 @@ def get_comments_data():
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
+    global next_cycle_time
+    current_time = time.time()
+    seconds_until_next_cycle = max(0, int(next_cycle_time - current_time)) if next_cycle_time else 0
     return jsonify({
         'post_urls': post_urls, 
         'last_refresh_time': last_refresh_time, 
         'refresh_messages': {user: msgs[0] if msgs else '' for user, msgs in refresh_messages.items()},  # Get the latest message per user
+        'seconds_until_next_cycle': seconds_until_next_cycle,
         'version': app_version
     })
+
 
 @app.route('/get_countdown', methods=['GET'])
 def get_countdown():
