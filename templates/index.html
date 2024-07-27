@@ -45,6 +45,22 @@
 
     <script>
         $(document).ready(function() {
+            function fetchComments() {
+                $.get('/get_comments', function(data) {
+                    const commentsData = data.comments;
+                    let commentText = '';
+                    let commentCounter = 0;
+                    for (const [username, comments] of Object.entries(commentsData)) {
+                        commentCounter += comments.length;
+                        for (const comment of comments) {
+                            commentText += `<p><strong>${comment[0]}</strong>: ${comment[1]} <em>${comment[2]}</em></p>`;
+                        }
+                    }
+                    $('#comment-text').html(commentText);
+                    $('#comment-counter').text(`Total comments: ${commentCounter}`);
+                });
+            }
+
             function fetchCountdown() {
                 $.get('/get_countdown', function(data) {
                     const countdownStatus = data.countdown_status;
@@ -60,6 +76,7 @@
                 });
             }
 
+            setInterval(fetchComments, 5000); // Fetch comments every 5 seconds
             setInterval(fetchCountdown, 1000); // Fetch countdown status every second
 
             // Other JavaScript code for handling form submissions, etc.
