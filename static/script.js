@@ -114,6 +114,9 @@ $(document).ready(function() {
         if (commentsQueue.length > 0) {
             commentIndex = 0;  // Reset the index to start from the first comment
             displayNextComment();
+        } else {
+            $('#comment-text').text('No comments available.');
+            $('#comment-counter').text('');
         }
     }
 
@@ -145,5 +148,4 @@ $(document).ready(function() {
         }, 1000);
     }
 });
-
 
