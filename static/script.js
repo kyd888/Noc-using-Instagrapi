@@ -2,7 +2,7 @@ $(document).ready(function() {
     let monitoring = false;
     let commentsQueue = [];
     let commentIndex = 0;
-    let nextMonitoringCycle = 0; // Add variable for countdown timer
+    let countdownInterval;
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -32,6 +32,7 @@ $(document).ready(function() {
                     monitoring = true;
                     $startButton.hide();
                     $('#stop-monitoring').show();
+                    startCountdown();  // Start countdown when monitoring starts
                     checkStatus();
                 } else {
                     $startButton.text('Start Monitoring').prop('disabled', false);
@@ -49,6 +50,7 @@ $(document).ready(function() {
             $.post('/stop_monitoring', function(response) {
                 alert(response.status);
                 monitoring = false;
+                clearInterval(countdownInterval);  // Stop countdown when monitoring stops
                 $stopButton.text('Stop Monitoring').hide();
                 $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
             }).fail(function() {
@@ -69,8 +71,6 @@ $(document).ready(function() {
                     updateAccountPostsList(data.post_urls);
                 });
 
-                nextMonitoringCycle = randomIntFromInterval(180, 540); // Set random interval for next cycle
-                updateCountdown(nextMonitoringCycle); // Update countdown timer
                 checkStatus();
             }, 5000);
         }
@@ -115,33 +115,18 @@ $(document).ready(function() {
         }
     }
 
-    function randomIntFromInterval(min, max) { // helper function to generate random interval
-        return Math.floor(Math.random() * (max - min + 1) + min);
-    }
+    function startCountdown() {
+        clearInterval(countdownInterval);  // Clear any existing intervals
+        let interval = Math.floor(Math.random() * (3600 - 1800 + 1)) + 1800;  // Random interval between 30 and 60 minutes
+        $('#countdown-timer').text(`${interval} seconds until next monitoring cycle`);
 
-    function updateCountdown(seconds) {
-        const countdownElement = $('#countdown-timer');
-        let interval = setInterval(function() {
-            if (seconds <= 0) {
-                clearInterval(interval);
-                countdownElement.text('Starting next cycle...');
-            } else {
-                countdownElement.text(`${seconds} seconds until next monitoring cycle`);
-                seconds--;
+        countdownInterval = setInterval(function() {
+            interval--;
+            $('#countdown-timer').text(`${interval} seconds until next monitoring cycle`);
+            if (interval <= 0) {
+                clearInterval(countdownInterval);
+                startCountdown();
             }
         }, 1000);
-    }
-
-    setInterval(fetchCountdown, 1000); // Update countdown every second
-
-    function fetchCountdown() {
-        $.get('/get_countdown', function(data) {
-            const countdowns = data.countdown_status;
-            let countdownText = '';
-            for (const [username, countdown] of Object.entries(countdowns)) {
-                countdownText += `<p>${username}: ${countdown.toFixed(0)} seconds</p>`;
-            }
-            $('#countdown-timer').html(countdownText);
-        });
     }
 });
