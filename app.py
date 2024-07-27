@@ -152,6 +152,8 @@ def stop_monitoring():
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
     return jsonify({'comments': comments_data, 'version': app_version})
+    
+next_cycle_time = None
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
@@ -253,7 +255,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, countdown_status, comments_data
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -267,38 +269,26 @@ def post_monitoring_loop(user_id, username):
                 handle_new_post(username, post_url, unique_id, latest_post.pk)
                 last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            sleep_interval = random.randint(300, 900)  # Increase sleep interval to 300-900 seconds (5-15 minutes)
+            sleep_interval = random.randint(1800, 3600)  # Increase sleep interval to 30-60 minutes
+            next_cycle_time = time.time() + sleep_interval
             print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
-            countdown_status[username] = sleep_interval
-            for i in range(sleep_interval, 0, -1):
-                countdown_status[username] = i
-                time.sleep(1)
-            
+            time.sleep(sleep_interval)
             cycle_count += 1
 
             if interaction_count >= break_after_actions:
-                break_duration = random.randint(break_duration_min, break_duration_max)  # Random break duration between 30 and 60 minutes
                 if random.random() < long_break_probability:
                     print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    countdown_status[username] = long_break_duration
-                    for i in range(long_break_duration, 0, -1):
-                        countdown_status[username] = i
-                        time.sleep(1)
+                    time.sleep(long_break_duration)
                 else:
                     print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    countdown_status[username] = break_duration
-                    for i in range(break_duration, 0, -1):
-                        countdown_status[username] = i
-                        time.sleep(1)
+                    time.sleep(break_duration)
                 interaction_count = 0
 
         except Exception as e:
             print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
 
     monitoring[username] = False
-    countdown_status[username] = None  # Reset countdown status
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
-
 def scan_for_new_post(user_id, last_post_id, username):
     latest_post = get_latest_post(user_id)
     if latest_post and latest_post.pk != last_post_id:
