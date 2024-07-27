@@ -63,7 +63,6 @@ $(document).ready(function() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
-                    updateAccountPostsList(data.comments);
                     updateCommentsQueue(data.comments);
                 });
 
@@ -79,23 +78,35 @@ $(document).ready(function() {
     function updateAccountPostsList(data) {
         $('#account-posts-list').empty();
         for (let username in data) {
-            $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
-            const posts = data[username];
-            posts.forEach(post => {
-                $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-            });
+            if (data.hasOwnProperty(username)) {
+                $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
+                const posts = data[username];
+                if (Array.isArray(posts)) {
+                    posts.forEach(post => {
+                        if (post.url && post.id) {
+                            $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+                        }
+                    });
+                }
+            }
         }
     }
 
     function updateCommentsQueue(commentsData) {
         commentsQueue = [];
         for (let username in commentsData) {
-            const posts = commentsData[username];
-            posts.forEach(post => {
-                post.comments.forEach(comment => {
-                    commentsQueue.push(comment);
-                });
-            });
+            if (commentsData.hasOwnProperty(username)) {
+                const posts = commentsData[username];
+                if (Array.isArray(posts)) {
+                    posts.forEach(post => {
+                        if (Array.isArray(post.comments)) {
+                            post.comments.forEach(comment => {
+                                commentsQueue.push(comment);
+                            });
+                        }
+                    });
+                }
+            }
         }
         if (commentsQueue.length > 0) {
             displayNextComment();
