@@ -220,14 +220,12 @@ def get_comments(media_id, count=10):
     try:
         comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
         if comments:
-            comments_data_list = [
+            new_comments = [
                 (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
                 for comment in comments
             ]
-            print(f"Fetched {len(comments_data_list)} comments for media ID {media_id} (App Version: {app_version})")
-            return comments_data_list
+            return new_comments
         else:
-            print(f"No comments found for media ID {media_id} (App Version: {app_version})")
             return []
     except Exception as e:
         print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
@@ -308,16 +306,16 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global
-    comments = get_comments(media_id, 10)
-    comments = [c for c in comments if c[0] != username]
-    if comments:
-        comments_data[username].append({'id': unique_id, 'comments': comments})
-        print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
-        csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
+    new_comments = get_comments(media_id, 10)
+    new_comments = [c for c in new_comments if c[0] != username]
+    if new_comments:
+        if username not in comments_data:
+            comments_data[username] = []
+        comments_data[username].extend(new_comments)
+        csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
-        print(f"CSV Data: {csv_data} (App Version: {app_version})")
-        analyze_comments_with_openai(comments, unique_id)
+        analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No comments found for post {unique_id} (App Version: {app_version})")
 
