@@ -28,6 +28,7 @@ post_urls = {}
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
+countdown_status = {}  # Store countdown status for each user
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
@@ -131,12 +132,13 @@ def start_monitoring():
     return jsonify({'status': 'Monitoring started', 'version': app_version})
 
 def start_monitoring_for_user(user_id, username):
-    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
+    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data, countdown_status
     monitoring[username] = True
     refresh_messages[username] = []
     comments_data[username] = []
     post_urls[username] = []
     last_refresh_time[username] = None
+    countdown_status[username] = None  # Initialize countdown status
     thread = Thread(target=post_monitoring_loop, args=(user_id, username))
     thread.start()
 
@@ -158,6 +160,10 @@ def get_post_urls():
         'refresh_messages': {user: msgs[0] if msgs else '' for user, msgs in refresh_messages.items()},  # Get the latest message per user
         'version': app_version
     })
+
+@app.route('/get_countdown', methods=['GET'])
+def get_countdown():
+    return jsonify({'countdown_status': countdown_status, 'version': app_version})
 
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
@@ -243,7 +249,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, countdown_status
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -257,29 +263,40 @@ def post_monitoring_loop(user_id, username):
                 handle_new_post(username, post_url, unique_id, latest_post.pk)
                 last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            sleep_interval = random.randint(180, 540)  # Increase sleep interval to 60-120 seconds
+            sleep_interval = random.randint(180, 540)  # Increase sleep interval to 180-540 seconds
             print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
-            time.sleep(sleep_interval)
+            countdown_status[username] = sleep_interval
+            for i in range(sleep_interval, 0, -1):
+                countdown_status[username] = i
+                time.sleep(1)
+            
             cycle_count += 1
 
             if interaction_count >= break_after_actions:
                 if random.random() < long_break_probability:
                     print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    time.sleep(long_break_duration)
+                    countdown_status[username] = long_break_duration
+                    for i in range(long_break_duration, 0, -1):
+                        countdown_status[username] = i
+                        time.sleep(1)
                 else:
                     print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    time.sleep(break_duration)
+                    countdown_status[username] = break_duration
+                    for i in range(break_duration, 0, -1):
+                        countdown_status[username] = i
+                        time.sleep(1)
                 interaction_count = 0
 
         except Exception as e:
             print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
 
     monitoring[username] = False
+    countdown_status[username] = None  # Reset countdown status
     print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
 def scan_for_new_post(user_id, last_post_id, username):
     latest_post = get_latest_post(user_id)
-    if latest_post and latest_post.pk != last_post_id:
+    if (latest_post and latest_post.pk != last_post_id):
         post_url = f"https://www.instagram.com/p/{latest_post.code}/"
         unique_id = str(uuid.uuid4().int)[:4]
         post_urls[username].append({'url': post_url, 'id': unique_id})
