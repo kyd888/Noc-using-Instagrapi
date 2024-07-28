@@ -152,6 +152,8 @@ def stop_monitoring():
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
+    global comments_data
+    print(f"Comments data: {comments_data}")
     return jsonify({'comments': comments_data, 'version': app_version})
 
 @app.route('/get_post_urls', methods=['GET'])
@@ -312,6 +314,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
         analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
