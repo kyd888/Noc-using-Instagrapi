@@ -217,7 +217,7 @@ def get_latest_post(user_id):
         print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
         return None
 
-def get_comments(media_id, count=10):
+def get_comments(media_id, count=10):  # Fetch 10 comments each cycle
     try:
         comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
         if comments:
@@ -298,18 +298,20 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global
-    comments = get_comments(media_id, 10)
-    comments = [c for c in comments if c[0] != username]
-    if comments:
-        comments_data[username].append({'id': unique_id, 'comments': comments})
-        print(f"Stored comments for post {unique_id}: {comments} (App Version: {app_version})")
-        csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in comments]
-        csv_data_global.extend(csv_data)
+    new_comments = get_comments(media_id, 10)  # Get 10 new comments
+    new_comments = [c for c in new_comments if c[0] != username]
+    if new_comments:
+        if username not in comments_data:
+            comments_data[username] = []
+        comments_data[username].extend(new_comments)  # Append new comments
+        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
+        new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+        csv_data_global.extend(new_csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
-        print(f"CSV Data: {csv_data} (App Version: {app_version})")
-        analyze_comments_with_openai(comments, unique_id)
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
+        analyze_comments_with_openai(new_comments, unique_id)
     else:
-        print(f"No comments found for post {unique_id} (App Version: {app_version})")
+        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
