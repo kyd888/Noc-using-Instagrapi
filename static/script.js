@@ -2,8 +2,6 @@ $(document).ready(function() {
     let monitoring = false;
     let commentsQueue = [];
     let commentIndex = 0;
-    let countdownInterval;
-    let countdownValue = 0;
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -52,8 +50,6 @@ $(document).ready(function() {
                 monitoring = false;
                 $stopButton.text('Stop Monitoring').hide();
                 $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
-                clearInterval(countdownInterval); // Clear the countdown interval
-                $('#countdown-timer').text(''); // Clear the countdown display
             }).fail(function() {
                 $stopButton.text('Stop Monitoring').prop('disabled', false);
             });
@@ -62,19 +58,17 @@ $(document).ready(function() {
 
     function checkStatus() {
         if (monitoring) {
-            $.get('/get_comments', function(data) {
-                updateCommentsQueue(data.comments);
-            });
+            setTimeout(function() {
+                $.get('/get_comments', function(data) {
+                    updateCommentsQueue(data.comments);
+                });
 
-            $.get('/get_post_urls', function(data) {
-                updateAccountPostsList(data.post_urls);
-                if (data.seconds_until_next_cycle !== undefined) {
-                    countdownValue = data.seconds_until_next_cycle;
-                    updateCountdown();
-                }
-            });
+                $.get('/get_post_urls', function(data) {
+                    updateAccountPostsList(data.post_urls);
+                });
 
-            setTimeout(checkStatus, 60000); // Check status every 60 seconds
+                checkStatus();
+            }, 5000);
         }
     }
 
@@ -101,9 +95,6 @@ $(document).ready(function() {
         }
         if (commentsQueue.length > 0) {
             displayNextComment();
-        } else {
-            $('#comment-text').text('No comments available.');
-            $('#comment-counter').text('');
         }
     }
 
@@ -114,19 +105,10 @@ $(document).ready(function() {
             $('#comment-counter').text(`Comment ${commentIndex + 1} of ${commentsQueue.length}`);
             commentIndex = (commentIndex + 1) % commentsQueue.length;
             setTimeout(displayNextComment, 3000); // Cycle through comments every 3 seconds
+        } else {
+            $('#comment-text').text('No comments available.');
+            $('#comment-counter').text('');
         }
-    }
-
-    function updateCountdown() {
-        $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
-        clearInterval(countdownInterval); // Clear any existing interval to avoid multiple intervals running
-        countdownInterval = setInterval(() => {
-            countdownValue--;
-            $('#countdown-timer').text(`${countdownValue} seconds until next monitoring cycle`);
-            if (countdownValue <= 0) {
-                clearInterval(countdownInterval); // Clear the interval when countdown reaches zero
-            }
-        }, 1000);
     }
 });
 
