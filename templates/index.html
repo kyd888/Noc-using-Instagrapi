@@ -23,34 +23,49 @@
     </style>
 </head>
 <body>
-    <div id="login-form-container">
-        <form id="login-form">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-    </div>
-    
-    <div id="main-content" style="display:none;">
-        <div class="comments-container" id="comments-container">
-            <h2>Comments</h2>
-            <div id="comment-text"></div>
-            <div id="comment-counter"></div>
-        </div>
-
-        <div>
-            <form id="monitor-form">
-                <input type="text" id="target_usernames" placeholder="Enter usernames (comma separated)" required>
-                <button type="submit" id="start-monitoring">Start Monitoring</button>
-                <button type="button" id="stop-monitoring" style="display:none;">Stop Monitoring</button>
-            </form>
-        </div>
-
-        <div id="account-posts-list"></div>
+    <div class="comments-container" id="comments-container">
+        <h2>Comments</h2>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        async function fetchComments() {
+            try {
+                const response = await fetch('/get_comments');
+                const data = await response.json();
+                
+                if (data.travisscott) {
+                    displayComments(data.travisscott);
+                } else {
+                    console.error('No comments found for travisscott');
+                }
+            } catch (error) {
+                console.error('Error fetching comments:', error);
+            }
+        }
+
+        function displayComments(comments) {
+            const commentsContainer = document.getElementById('comments-container');
+
+            comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment');
+
+                const usernameElement = document.createElement('span');
+                usernameElement.classList.add('username');
+                usernameElement.textContent = comment[0];
+
+                const messageElement = document.createElement('span');
+                messageElement.classList.add('message');
+                messageElement.textContent = `: ${comment[1]}`;
+
+                commentElement.appendChild(usernameElement);
+                commentElement.appendChild(messageElement);
+                commentsContainer.appendChild(commentElement);
+            });
+        }
+
+        // Fetch comments when the page loads
+        window.onload = fetchComments;
+    </script>
 </body>
 </html>
-
