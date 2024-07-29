@@ -315,7 +315,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-
 def analyze_comments_with_openai(comments, unique_id):
     try:
         comment_texts = [comment[1] for comment in comments]
