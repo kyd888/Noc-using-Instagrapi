@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comments Section</title>
+    <title>Instagram Monitoring Tool</title>
     <style>
         /* Basic styling for comments */
         .comments-container {
@@ -24,12 +24,44 @@
         .comment .message {
             margin-top: 5px;
         }
+        /* Styling for main content */
+        #main-content {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="comments-container" id="comments-container">
-        <h2>Comments</h2>
-        <div id="comment-list"></div>
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
+    </div>
+    <form id="login-form" method="POST">
+        <fieldset class="no-border">
+            <legend><h2>Login</h2></legend>
+            <label for="insta_username">Instagram Username:</label><br>
+            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+            <label for="insta_password">Instagram Password:</label><br>
+            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+            <button type="submit"><span>→</span></button>
+        </fieldset>
+    </form>
+    <div id="main-content">
+        <div id="left-panel">
+            <form id="monitor-form">
+                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
+                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
+            </form>
+            <div id="account-posts-list"></div>
+            <div id="next-cycle-timer"></div>
+        </div>
+        <div id="right-panel">
+            <h2>Comments</h2>
+            <div id="scanned-comments">
+                <div id="comment-text"></div>
+                <div id="comment-counter"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -51,8 +83,8 @@
         }
 
         function displayComments(comments) {
-            const commentList = document.getElementById('comment-list');
-            commentList.innerHTML = ''; // Clear previous comments
+            const commentsContainer = document.getElementById('comment-list');
+            commentsContainer.innerHTML = ''; // Clear previous comments
 
             comments.forEach(comment => {
                 const commentElement = document.createElement('div');
@@ -68,7 +100,7 @@
 
                 commentElement.appendChild(usernameElement);
                 commentElement.appendChild(messageElement);
-                commentList.appendChild(commentElement);
+                commentsContainer.appendChild(commentElement);
             });
         }
 
