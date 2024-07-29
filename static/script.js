@@ -65,7 +65,7 @@ $(document).ready(function() {
 
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
-                    $('#next-cycle-timer').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
+                    updateNextCycleTimer(data.seconds_until_next_cycle);
                 });
 
                 checkStatus();
@@ -84,12 +84,18 @@ $(document).ready(function() {
         }
     }
 
+    function updateNextCycleTimer(seconds) {
+        $('#next-cycle-timer').text(`${seconds} seconds until next monitoring cycle`);
+    }
+
     function updateCommentsQueue(commentsData) {
         commentsQueue = [];
         for (let username in commentsData) {
             const posts = commentsData[username];
             posts.forEach(post => {
-                commentsQueue.push(...post.comments);
+                post.comments.forEach(comment => {
+                    commentsQueue.push(comment);
+                });
             });
         }
         if (commentsQueue.length > 0) {
