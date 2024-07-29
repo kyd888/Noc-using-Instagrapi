@@ -5,10 +5,10 @@ body {
     padding: 0;
     color: #333;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     height: 100vh;
+    flex-direction: column;
 }
 
 .logo-container {
@@ -18,29 +18,23 @@ body {
 }
 
 .logo {
-    width: 150px; /* Adjust size as needed */
+    width: 70px; /* Adjust size as needed */
     height: auto;
-}
-
-h1 {
-    text-align: center;
-    color: #4CAF50;
-    margin-top: 20px;
 }
 
 form {
     background: #fff;
-    padding: 50px;
-    margin: 20px auto;
+    padding: 20px;
+    margin: 10px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-    width: 100%;
+    max-width: 600px;
+    width: 90%;
 }
 
 .no-border {
     border: none;
-    padding: 20px 0; /* Add padding to top and bottom */
+    padding: 10px 0; /* Add padding to top and bottom */
 }
 
 .no-border legend {
@@ -59,11 +53,12 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: 100%; /* Make input fields the same width as the buttons */
+    width: 100%; /* Make input fields full width */
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box;
 }
 
 button {
@@ -85,19 +80,20 @@ button:hover {
 
 #main-content {
     display: flex;
-    justify-content: space-between;
-    width: 80%;
-    max-width: 1200px;
-    margin-top: 20px;
+    flex-direction: column; /* Stack elements vertically */
+    align-items: center; /* Center align elements */
+    width: 100%;
 }
 
 #left-panel, #right-panel {
     background: #fff;
     padding: 20px;
-    margin: 20px;
+    margin: 10px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: 45%; /* Adjust as needed */
+    width: 90%;
+    max-width: 600px; /* Limit maximum width */
+    box-sizing: border-box;
 }
 
 h2 {
@@ -116,24 +112,11 @@ h2 {
     margin-top: 10px;
 }
 
-.comments-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
+@media (min-width: 768px) {
+    #main-content {
+        flex-direction: row; /* Place elements side by side on larger screens */
+        justify-content: space-between;
+    }
 
-.comment {
-    border-bottom: 1px solid #ddd;
-    padding: 10px 0;
-}
-
-.comment .username {
-    font-weight: bold;
-}
-
-.comment .message {
-    margin-top: 5px;
-}
+    #left-panel, #right-panel {
+        width: 45%; /* Take up less width on larger scree
