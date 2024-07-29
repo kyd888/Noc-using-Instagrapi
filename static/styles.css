@@ -5,8 +5,9 @@ body {
     padding: 0;
     color: #333;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     height: 100vh;
 }
 
@@ -17,7 +18,7 @@ body {
 }
 
 .logo {
-    width: 70px; /* Adjust size as needed */
+    width: 150px; /* Adjust size as needed */
     height: auto;
 }
 
@@ -33,7 +34,8 @@ form {
     margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 900px;
+    max-width: 400px;
+    width: 100%;
 }
 
 .no-border {
@@ -57,7 +59,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: 89%; /* Make input fields the same width as the buttons */
+    width: 100%; /* Make input fields the same width as the buttons */
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -84,7 +86,9 @@ button:hover {
 #main-content {
     display: flex;
     justify-content: space-between;
-    width: 100%;
+    width: 80%;
+    max-width: 1200px;
+    margin-top: 20px;
 }
 
 #left-panel, #right-panel {
@@ -112,10 +116,24 @@ h2 {
     margin-top: 10px;
 }
 
-#countdown-timer {
-    text-align: center;
-    font-size: 1.2em;
-    margin-top: 10px;
-    color: #333;
+.comments-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
+.comment {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+}
+
+.comment .username {
+    font-weight: bold;
+}
+
+.comment .message {
+    margin-top: 5px;
+}
