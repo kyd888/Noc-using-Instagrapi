@@ -32,6 +32,7 @@
             try {
                 const response = await fetch('/get_comments');
                 const data = await response.json();
+                console.log('Data received:', data);
                 
                 if (data.travisscott) {
                     displayComments(data.travisscott);
@@ -69,3 +70,4 @@
     </script>
 </body>
 </html>
+
