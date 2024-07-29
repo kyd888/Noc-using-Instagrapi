@@ -11,7 +11,7 @@ $(document).ready(function() {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
             if (response.status === 'Login successful') {
-                $('#login-form-container').hide();
+                $('#login-form').hide();
                 $('#main-content').show();
             }
         }).fail(function() {
@@ -60,11 +60,11 @@ $(document).ready(function() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
-                    updateCommentsQueue(data);
+                    updateCommentsQueue(data.comments);
                 });
 
                 $.get('/get_post_urls', function(data) {
-                    updateAccountPostsList(data);
+                    updateAccountPostsList(data.post_urls);
                 });
 
                 checkStatus();
@@ -111,5 +111,3 @@ $(document).ready(function() {
         }
     }
 });
-
-
