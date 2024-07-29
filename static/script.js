@@ -65,6 +65,7 @@ $(document).ready(function() {
 
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
+                    $('#next-cycle-timer').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
                 checkStatus();
@@ -88,9 +89,7 @@ $(document).ready(function() {
         for (let username in commentsData) {
             const posts = commentsData[username];
             posts.forEach(post => {
-                post.forEach(comment => {
-                    commentsQueue.push(comment);
-                });
+                commentsQueue.push(...post.comments);
             });
         }
         if (commentsQueue.length > 0) {
