@@ -30,6 +30,7 @@ form {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
     max-width: 600px;
     width: 90%;
+    box-sizing: border-box;
 }
 
 .no-border {
@@ -83,6 +84,8 @@ button:hover {
     flex-direction: column; /* Stack elements vertically */
     align-items: center; /* Center align elements */
     width: 100%;
+    padding: 10px; /* Add padding for better spacing */
+    box-sizing: border-box;
 }
 
 #left-panel, #right-panel {
@@ -94,6 +97,10 @@ button:hover {
     width: 90%;
     max-width: 600px; /* Limit maximum width */
     box-sizing: border-box;
+}
+
+#left-panel {
+    margin-bottom: 20px; /* Add margin to separate left and right panels */
 }
 
 h2 {
@@ -119,4 +126,10 @@ h2 {
     }
 
     #left-panel, #right-panel {
-        width: 45%; /* Take up less width on larger scree
+        width: 45%; /* Take up less width on larger screens */
+    }
+
+    #left-panel {
+        margin-bottom: 0; /* Remove bottom margin for left panel on larger screens */
+    }
+}
