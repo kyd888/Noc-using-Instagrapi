@@ -11,7 +11,7 @@ $(document).ready(function() {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
             if (response.status === 'Login successful') {
-                $('#login-form').hide();
+                $('#login-form-container').hide();
                 $('#main-content').show();
             }
         }).fail(function() {
@@ -60,11 +60,11 @@ $(document).ready(function() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
-                    updateCommentsQueue(data.comments);
+                    updateCommentsQueue(data);
                 });
 
                 $.get('/get_post_urls', function(data) {
-                    updateAccountPostsList(data.post_urls);
+                    updateAccountPostsList(data);
                 });
 
                 checkStatus();
