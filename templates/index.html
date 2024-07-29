@@ -9,6 +9,10 @@
         .comments-container {
             max-width: 600px;
             margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .comment {
             border-bottom: 1px solid #ddd;
@@ -25,6 +29,7 @@
 <body>
     <div class="comments-container" id="comments-container">
         <h2>Comments</h2>
+        <div id="comment-list"></div>
     </div>
 
     <script>
@@ -32,10 +37,12 @@
             try {
                 const response = await fetch('/get_comments');
                 const data = await response.json();
+                console.log('Data received:', data);
                 
-                if (data.travisscott) {
-                    displayComments(data.travisscott);
+                if (data.comments.travisscott) {
+                    displayComments(data.comments.travisscott);
                 } else {
+                    document.getElementById('comment-list').innerText = 'No comments available.';
                     console.error('No comments found for travisscott');
                 }
             } catch (error) {
@@ -44,7 +51,8 @@
         }
 
         function displayComments(comments) {
-            const commentsContainer = document.getElementById('comments-container');
+            const commentList = document.getElementById('comment-list');
+            commentList.innerHTML = ''; // Clear previous comments
 
             comments.forEach(comment => {
                 const commentElement = document.createElement('div');
@@ -60,7 +68,7 @@
 
                 commentElement.appendChild(usernameElement);
                 commentElement.appendChild(messageElement);
-                commentsContainer.appendChild(commentElement);
+                commentList.appendChild(commentElement);
             });
         }
 
