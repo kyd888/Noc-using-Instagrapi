@@ -212,149 +212,126 @@ def get_latest_post(user_id):
         posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
         if posts:
             print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
-            return posts[0].pk
+        else:
+            print("No posts found. (App Version: {app_version})")
+        return posts[0] if posts else None
+    except Exception as e:
+        print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
         return None
-    except Exception as e:
-        print(f"Error fetching latest post: {e} (App Version: {app_version})")
-        return None
 
-def comment_on_post(post_id, message):
+def get_comments(media_id, count=10):  # Fetch 10 comments each cycle
     try:
-        retry_with_exponential_backoff(lambda: client.media_comment(post_id, message))
-        print(f"Commented on post {post_id} with message: {message} (App Version: {app_version})")
+        comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
+        if comments:
+            comments_data = [
+                (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
+                for comment in comments
+            ]
+            print(f"Fetched {len(comments_data)} comments for media ID {media_id} (App Version: {app_version})")
+            return comments_data
+        else:
+            print(f"No comments found for media ID {media_id} (App Version: {app_version})")
+            return []
     except Exception as e:
-        print(f"Error commenting on post {post_id}: {e} (App Version: {app_version})")
-
-def store_csv_in_s3(file_name, csv_data):
-    try:
-        csv_buffer = StringIO()
-        csv_data.to_csv(csv_buffer)
-        csv_content = csv_buffer.getvalue()
-        s3.put_object(Bucket=bucket_name, Key=file_name, Body=csv_content)
-        print(f"CSV data uploaded to S3 bucket {bucket_name} with file name {file_name} (App Version: {app_version})")
-    except (NoCredentialsError, BotoClientError) as e:
-        print(f"Error uploading CSV to S3: {e} (App Version: {app_version})")
-
-def fetch_and_store_comments(user_id, username, post_id):
-    global comments_data
-    try:
-        comments = retry_with_exponential_backoff(lambda: client.media_comments(post_id))
-        for comment in comments:
-            comment_data = {
-                'user_id': user_id,
-                'username': username,
-                'post_id': post_id,
-                'comment_id': comment.pk,
-                'comment_text': comment.text,
-                'comment_time': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
-            }
-            comments_data[username].append(comment_data)
-        df = pd.DataFrame(comments_data[username])
-        if not df.empty:
-            csv_file_name = f"{username}_comments_{int(time.time())}.csv"
-            store_csv_in_s3(csv_file_name, df)
-    except Exception as e:
-        print(f"Error fetching comments for post {post_id}: {e} (App Version: {app_version})")
-
-def fetch_new_comments(user_id, username, post_id, last_comment_id=None):
-    global comments_data
-    try:
-        comments = retry_with_exponential_backoff(lambda: client.media_comments(post_id))
-        new_comments = []
-        for comment in comments:
-            if last_comment_id is None or comment.pk > last_comment_id:
-                new_comment = {
-                    'user_id': user_id,
-                    'username': username,
-                    'post_id': post_id,
-                    'comment_id': comment.pk,
-                    'comment_text': comment.text,
-                    'comment_time': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
-                }
-                comments_data[username].append(new_comment)
-                new_comments.append(new_comment)
-        if new_comments:
-            df = pd.DataFrame(new_comments)
-            if not df.empty:
-                csv_file_name = f"{username}_new_comments_{int(time.time())}.csv"
-                store_csv_in_s3(csv_file_name, df)
-        return new_comments
-    except Exception as e:
-        print(f"Error fetching new comments for post {post_id}: {e} (App Version: {app_version})")
+        print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
         return []
 
-def generate_comment_text(username):
+def write_to_s3(data, filename):
+    df = pd.DataFrame(data)
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
     try:
-        response = openai.Completion.create(
-            model="text-davinci-002",
-            prompt=f"Generate an engaging and personalized comment for {username}'s latest Instagram post:",
-            temperature=0.7,
-            max_tokens=50
-        )
-        comment_text = response.choices[0].text.strip()
-        print(f"Generated comment for {username}: {comment_text} (App Version: {app_version})")
-        return comment_text
+        print(f"Attempting to write data to S3 bucket {bucket_name} (App Version: {app_version})")
+        print(f"Data being written:\n{df}")  # Log the data being written
+        s3.put_object(Bucket=bucket_name, Key=filename, Body=csv_buffer.getvalue())
+        print(f"Data written to S3 bucket {bucket_name} (App Version: {app_version})")
+    except NoCredentialsError:
+        print("Credentials not available")
+    except BotoClientError as e:
+        print(f"Boto Client Error: {e}")
     except Exception as e:
-        print(f"Error generating comment for {username}: {e} (App Version: {app_version})")
-        return "Great post!"
-
-def like_post(post_id):
-    try:
-        retry_with_exponential_backoff(lambda: client.media_like(post_id))
-        print(f"Liked post {post_id} (App Version: {app_version})")
-    except Exception as e:
-        print(f"Error liking post {post_id}: {e} (App Version: {app_version})")
-
-def follow_user(user_id):
-    try:
-        retry_with_exponential_backoff(lambda: client.user_follow(user_id))
-        print(f"Followed user {user_id} (App Version: {app_version})")
-    except Exception as e:
-        print(f"Error following user {user_id}: {e} (App Version: {app_version})")
+        print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global max_cycles, max_interactions, break_after_actions, long_break_probability, long_break_duration, next_cycle_time
-    cycle = 0
-    while monitoring.get(username) and cycle < max_cycles:
-        post_id = get_latest_post(user_id)
-        if post_id is None:
-            continue
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
+    last_post_id = None
+    cycle_count = 0
+    interaction_count = 0
 
-        if post_id not in post_urls[username]:
-            post_urls[username].append(post_id)
-            comment_text = generate_comment_text(username)
-            comment_on_post(post_id, comment_text)
-            like_post(post_id)
-            follow_user(user_id)
-            fetch_and_store_comments(user_id, username, post_id)
-            cycle += 1
+    while monitoring.get(username, False):
+        try:
+            latest_post, post_url, unique_id = scan_for_new_post(user_id, last_post_id, username)
+            if latest_post:
+                last_post_id = latest_post.pk
+                interaction_count += 1
+                handle_new_post(username, post_url, unique_id, latest_post.pk)
+                last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            if cycle % break_after_actions == 0:
+            sleep_interval = random.randint(1800, 3600)  # Increase sleep interval to 30-60 minutes
+            next_cycle_time = time.time() + sleep_interval
+            print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
+            time.sleep(sleep_interval)
+            cycle_count += 1
+
+            if interaction_count >= break_after_actions:
                 if random.random() < long_break_probability:
-                    print(f"Taking a long break for {long_break_duration} seconds. (App Version: {app_version})")
+                    print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
                     time.sleep(long_break_duration)
                 else:
-                    short_break_duration = random.randint(300, 600)  # Short break between 5 to 10 minutes
-                    print(f"Taking a short break for {short_break_duration} seconds. (App Version: {app_version})")
-                    time.sleep(short_break_duration)
+                    print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
+                    time.sleep(break_duration)
+                interaction_count = 0
 
-        if len(post_urls[username]) > max_interactions:
-            post_urls[username].pop(0)
+        except Exception as e:
+            print(f"An error occurred in the monitoring loop: {e} (App Version: {app_version})")
 
-        last_comment_id = comments_data[username][-1]['comment_id'] if comments_data[username] else None
-        new_comments = fetch_new_comments(user_id, username, post_id, last_comment_id)
-        if new_comments:
-            print(f"New comments fetched: {new_comments} (App Version: {app_version})")
-        
-        # Wait until the next cycle
-        current_time = time.time()
-        if next_cycle_time and current_time < next_cycle_time:
-            time_until_next_cycle = next_cycle_time - current_time
-            print(f"Waiting for {int(time_until_next_cycle)} seconds until the next cycle. (App Version: {app_version})")
-            time.sleep(time_until_next_cycle)
-        
-        # Set the next cycle time
-        next_cycle_time = current_time + random.randint(1800, 3600)  # Next cycle in 30 to 60 minutes
+    monitoring[username] = False
+    print(f"Monitoring stopped for {username} after {cycle_count} cycles and {interaction_count} interactions. (App Version: {app_version})")
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+def scan_for_new_post(user_id, last_post_id, username):
+    latest_post = get_latest_post(user_id)
+    if (latest_post and latest_post.pk != last_post_id):
+        post_url = f"https://www.instagram.com/p/{latest_post.code}/"
+        unique_id = str(uuid.uuid4().int)[:4]
+        post_urls[username].append({'url': post_url, 'id': unique_id})
+        print(f"Found new post: {post_url} (App Version: {app_version})")
+        return latest_post, post_url, unique_id
+    return None, None, None
+
+def handle_new_post(username, post_url, unique_id, media_id):
+    global comments_data, csv_data_global
+    new_comments = get_comments(media_id, 10)  # Get 10 new comments
+    new_comments = [c for c in new_comments if c[0] != username]
+    if new_comments:
+        if username not in comments_data:
+            comments_data[username] = []
+        comments_data[username].extend(new_comments)  # Append new comments
+        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
+        new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+        csv_data_global.extend(new_csv_data)
+        write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
+        analyze_comments_with_openai(new_comments, unique_id)
+    else:
+        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
+
+def analyze_comments_with_openai(comments, unique_id):
+    try:
+        comment_texts = [comment[1] for comment in comments]
+        joined_comments = " ".join(comment_texts)
+        response = openai.Completion.create(
+            engine="davinci",
+            prompt=f"Analyze the following comments and summarize the main topics discussed:\n\n{joined_comments}",
+            max_tokens=150
+        )
+        summary = response.choices[0].text.strip()
+        print(f"AI Analysis for post {unique_id}: {summary} (App Version: {app_version})")
+        # Save the summary to S3 or display it as needed
+        # Example: write_to_s3([{'post_id': unique_id, 'summary': summary}], 'NOC_analysis.csv')
+    except Exception as e:
+        print(f"Error during AI analysis: {e} (App Version: {app_version})")
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
+    app.run(host='0.0.0.0', port=port)
