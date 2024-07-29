@@ -153,7 +153,7 @@ def stop_monitoring():
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
     global comments_data
-    print(f"Comments data: {comments_data}")
+    print(f"Comments data being sent to front-end: {comments_data}")
     return jsonify({'comments': comments_data, 'version': app_version})
 
 @app.route('/get_post_urls', methods=['GET'])
