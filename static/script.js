@@ -10,25 +10,24 @@ $(document).ready(function() {
         $.post('/login', $(this).serialize(), function(response) {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
-            if (response.status === 'Login successful' || response.status === 'Session restored successfully') {
-                $('#login-form').hide();
+            if (response.status === 'Login successful') {
+                $('#login-container').hide();
                 $('#main-content').show();
+                fetchComments();
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
         });
     });
 
-    $('#restore-session-form').submit(function(event) {
-        event.preventDefault();
-        $.post('/login', $(this).serialize(), function(response) {
+    $('#restore-session').click(function() {
+        $.post('/login', { restore_session: true }, function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
-                $('#restore-session-form').hide();
+                $('#login-container').hide();
                 $('#main-content').show();
+                fetchComments();
             }
-        }).fail(function() {
-            alert('Failed to restore session');
         });
     });
 
@@ -101,7 +100,7 @@ $(document).ready(function() {
         for (let username in commentsData) {
             const posts = commentsData[username];
             posts.forEach(post => {
-                post.forEach(comment => {
+                post.comments.forEach(comment => {
                     commentsQueue.push(comment);
                 });
             });
@@ -122,6 +121,44 @@ $(document).ready(function() {
             $('#comment-text').text('No comments available.');
             $('#comment-counter').text('');
         }
+    }
+
+    async function fetchComments() {
+        try {
+            const response = await fetch('/get_comments');
+            const data = await response.json();
+            console.log('Data received:', data);
+            
+            if (data.comments.travisscott) {
+                displayComments(data.comments.travisscott);
+            } else {
+                console.error('No comments found for travisscott');
+            }
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+        }
+    }
+
+    function displayComments(comments) {
+        const commentsContainer = document.getElementById('comments-container');
+        commentsContainer.innerHTML = '<h2>Comments</h2>';
+
+        comments.forEach(comment => {
+            const commentElement = document.createElement('div');
+            commentElement.classList.add('comment');
+
+            const usernameElement = document.createElement('span');
+            usernameElement.classList.add('username');
+            usernameElement.textContent = comment[0];
+
+            const messageElement = document.createElement('span');
+            messageElement.classList.add('message');
+            messageElement.textContent = `: ${comment[1]}`;
+
+            commentElement.appendChild(usernameElement);
+            commentElement.appendChild(messageElement);
+            commentsContainer.appendChild(commentElement);
+        });
     }
 });
 
