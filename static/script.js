@@ -11,9 +11,8 @@ $(document).ready(function() {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
             if (response.status === 'Login successful') {
-                $('#login-container').hide();
+                $('#login-form').hide();
                 $('#main-content').show();
-                fetchComments();
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
@@ -24,10 +23,11 @@ $(document).ready(function() {
         $.post('/login', { restore_session: true }, function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
-                $('#login-container').hide();
+                $('#session-restore').hide();
                 $('#main-content').show();
-                fetchComments();
             }
+        }).fail(function() {
+            alert('Failed to restore session');
         });
     });
 
@@ -122,44 +122,4 @@ $(document).ready(function() {
             $('#comment-counter').text('');
         }
     }
-
-    async function fetchComments() {
-        try {
-            const response = await fetch('/get_comments');
-            const data = await response.json();
-            console.log('Data received:', data);
-            
-            if (data.comments.travisscott) {
-                displayComments(data.comments.travisscott);
-            } else {
-                console.error('No comments found for travisscott');
-            }
-        } catch (error) {
-            console.error('Error fetching comments:', error);
-        }
-    }
-
-    function displayComments(comments) {
-        const commentsContainer = document.getElementById('comments-container');
-        commentsContainer.innerHTML = '<h2>Comments</h2>';
-
-        comments.forEach(comment => {
-            const commentElement = document.createElement('div');
-            commentElement.classList.add('comment');
-
-            const usernameElement = document.createElement('span');
-            usernameElement.classList.add('username');
-            usernameElement.textContent = comment[0];
-
-            const messageElement = document.createElement('span');
-            messageElement.classList.add('message');
-            messageElement.textContent = `: ${comment[1]}`;
-
-            commentElement.appendChild(usernameElement);
-            commentElement.appendChild(messageElement);
-            commentsContainer.appendChild(commentElement);
-        });
-    }
 });
-
-
