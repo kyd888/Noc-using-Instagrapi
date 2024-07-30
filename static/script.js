@@ -3,19 +3,7 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(response) {
-            if (response.session_exists) {
-                $('#login-section').hide();
-                $('#continue-session-section').show();
-                $('#profile-pic').attr('src', response.profile_pic_url);
-                $('#profile-username').text(response.username);
-            } else {
-                $('#login-section').show();
-                $('#continue-session-section').hide();
-            }
-        });
-    }
+    checkSavedSession();
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -25,28 +13,12 @@ $(document).ready(function() {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
             if (response.status === 'Login successful') {
-                $('#login-section').hide();
+                $('#login-form').hide();
                 $('#main-content').show();
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
         });
-    });
-
-    $('#continue-session').click(function() {
-        $.post('/continue_session', function(response) {
-            if (response.status === 'Session restored') {
-                $('#continue-session-section').hide();
-                $('#main-content').show();
-            } else {
-                alert(response.status);
-            }
-        });
-    });
-
-    $('#new-login').click(function() {
-        $('#continue-session-section').hide();
-        $('#login-section').show();
     });
 
     $('#monitor-form').submit(function(event) {
@@ -85,6 +57,18 @@ $(document).ready(function() {
             });
         }
     });
+
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(data) {
+            if (data.session_exists) {
+                $('#session-username').text(data.username);
+                $('#profile-pic').attr('src', data.profile_pic_url);
+                $('#session-container').show();
+            } else {
+                $('#login-form').show();
+            }
+        });
+    }
 
     function checkStatus() {
         if (monitoring) {
@@ -141,6 +125,18 @@ $(document).ready(function() {
         }
     }
 
-    // Initial check for saved session
-    checkSavedSession();
+    window.continueSession = function() {
+        $.post('/continue_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored') {
+                $('#session-container').hide();
+                $('#main-content').show();
+            }
+        });
+    }
+
+    window.showLoginForm = function() {
+        $('#session-container').hide();
+        $('#login-form').show();
+    }
 });
