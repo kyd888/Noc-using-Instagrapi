@@ -84,23 +84,19 @@ def login():
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         
-        # Fetch profile picture URL
-        user_info = client.user_info_by_username(insta_username)
-        profile_pic_url = user_info.profile_pic_url_hd
-
-        # Save session data
-        session['ig_session'] = {
-            'settings': client.get_settings(),
-            'username': insta_username,
-            'profile_pic_url': profile_pic_url
-        }
-        
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
             aws_secret_access_key=aws_secret_key, 
             region_name=aws_region
         )
+        
+        # Save session details
+        session['ig_session'] = {
+            'username': insta_username,
+            'settings': client.get_settings(),
+            'profile_pic_url': client.user_info_by_username(insta_username).profile_pic_url
+        }
         return jsonify({'status': 'Login successful', 'version': app_version})
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
@@ -346,28 +342,24 @@ def analyze_comments_with_openai(comments, unique_id):
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
     if 'ig_session' in session:
-        ig_session = session['ig_session']
         return jsonify({
-            'session_exists': True,
-            'username': ig_session['username'],
-            'profile_pic_url': ig_session['profile_pic_url']
+            'has_session': True,
+            'username': session['ig_session']['username'],
+            'profile_pic_url': session['ig_session']['profile_pic_url']
         })
-    return jsonify({'session_exists': False})
+    return jsonify({'has_session': False})
 
 @app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client
-    ig_session = session.get('ig_session')
-    if ig_session:
+    if 'ig_session' in session:
+        ig_session = session['ig_session']
         client = Client()
         client.set_settings(ig_session['settings'])
         client.login_by_sessionid(ig_session['settings']['sessionid'])
-        return jsonify({'status': 'Session continued', 'version': app_version})
-    return jsonify({'status': 'No session to continue', 'version': app_version}), 400
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    app.run(host='0.0.0.0', port=port)
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored', 'version': app_version})
+    return jsonify({'status': 'No session to restore', 'version': app_version})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
