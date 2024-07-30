@@ -3,49 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOC</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <title>Comments Section</title>
+    <style>
+        /* Basic styling for comments */
+        .comments-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .comment {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .comment .username {
+            font-weight: bold;
+        }
+        .comment .message {
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
+    <div class="comments-container" id="comments-container">
+        <h2>Comments</h2>
     </div>
-    <div id="session-container" style="display:none;">
-        <img id="session-profile-pic" src="" alt="Profile Picture" style="width:50px;height:50px;border-radius:50%;">
-        <p id="session-username"></p>
-        <button id="continue-session-button">Continue Session</button>
-        <button id="login-with-new-account">Login with New Account</button>
-    </div>
-    <form id="login-form" method="POST" style="display:none;">
-        <fieldset class="no-border">
-            <legend><h2>Login</h2></legend>
-            <label for="insta_username">Instagram Username:</label><br>
-            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-            <label for="insta_password">Instagram Password:</label><br>
-            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-            <button type="submit"><span>→</span></button>
-        </fieldset>
-    </form>
 
-    <div id="main-content" style="display:none;">
-        <div id="left-panel">
-            <form id="monitor-form">
-                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
-                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
-                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
-            </form>
-            <div id="account-posts-list"></div>
-        </div>
-        <div id="right-panel">
+    <div id="login-form-container">
+        <img src="static/logo.png" alt="NOC Logo" class="logo">
+        <form id="login-form">
+            <label for="insta_username">Instagram Username:</label>
+            <input type="text" id="insta_username" name="insta_username" required>
+            <label for="insta_password">Instagram Password:</label>
+            <input type="password" id="insta_password" name="insta_password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <div id="session-container" style="display: none;">
+        <img id="session-profile-pic" src="" alt="Profile Picture" class="profile-pic">
+        <span id="session-username"></span>
+        <button id="continue-session-button">Continue Session</button>
+        <button id="login-new-account-button" onclick="location.reload()">Login with new account</button>
+    </div>
+
+    <div id="main-content" style="display: none;">
+        <form id="monitor-form">
+            <label for="target_usernames">Target Usernames (comma-separated):</label>
+            <input type="text" id="target_usernames" name="target_usernames" required>
+            <button id="start-monitoring" type="submit">Start Monitoring</button>
+            <button id="stop-monitoring" style="display: none;">Stop Monitoring</button>
+        </form>
+
+        <div id="account-posts-list"></div>
+        <div id="comment-section">
             <h2>Comments</h2>
-            <div id="scanned-comments">
-                <div id="comment-text"></div>
-                <div id="comment-counter"></div>
-            </div>
+            <div id="comment-text">No comments available.</div>
+            <div id="comment-counter"></div>
         </div>
     </div>
+
+    <script src="static/script.js"></script>
 </body>
 </html>
