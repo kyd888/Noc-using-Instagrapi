@@ -339,3 +339,4 @@ def analyze_comments_with_openai(comments, unique_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
+
