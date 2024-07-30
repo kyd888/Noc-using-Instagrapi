@@ -33,36 +33,42 @@ max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
-next_cycle_time = None  # Initialize next cycle time
+next_cycle_time = None  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 @app.route('/')
 def index():
-    session_exists = 'insta_username' in session and 'sessionid' in session
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=session_exists)
+    session_exists = 'insta_username' in session and 'insta_sessionid' in session
+    return render_template('index.html', version=app_version, session_exists=session_exists)
 
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
-    insta_username = request.form.get('insta_username')
-    insta_password = request.form.get('insta_password')
-    restore_session = request.form.get('restore_session')
 
+    if 'restore_session' in request.json:
+        return restore_session()
+
+    insta_username = request.form['insta_username']
+    insta_password = request.form['insta_password']
+    
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
         aws_access_key = file.read().strip()
-
+    
     # Read AWS secret key from secret file
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
-
+    
     aws_region = 'us-east-1'
     bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
-
+    
     try:
+        print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
+
+        # Set device settings to simulate an iPhone 12 Pro
         client.set_device({
             "manufacturer": "Apple",
             "model": "iPhone12,3",
@@ -77,18 +83,15 @@ def login():
             "device_guid": str(uuid.uuid4())
         })
 
-        if restore_session:
-            client.login_by_sessionid(session['sessionid'])
-            print("Session restored successfully.")
-            return jsonify({'status': 'Session restored successfully', 'version': app_version})
+        # Debugging: Print the device settings
+        print(f"Device settings: {client.device}")
 
-        print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         session['insta_username'] = insta_username
-        session['sessionid'] = client.sessionid
-        session['profile_picture'] = client.user_info_by_username(insta_username).profile_pic_url_hd
-
+        session['insta_sessionid'] = client.sessionid
+        session['profile_picture'] = client.account_info().profile_pic_url
+        
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -99,6 +102,16 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+def restore_session():
+    global client
+    try:
+        client = Client()
+        client.login_by_sessionid(session['insta_sessionid'])
+        return jsonify({'status': 'Session restored successfully', 'version': app_version})
+    except Exception as e:
+        print(f"Session restore failed: {e} (App Version: {app_version})")
+        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
@@ -339,4 +352,3 @@ def analyze_comments_with_openai(comments, unique_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
-
