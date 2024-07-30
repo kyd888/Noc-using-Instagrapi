@@ -3,7 +3,7 @@ import time
 import random
 import uuid
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -41,6 +41,13 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
+
+@app.route('/check_saved_session', methods=['GET'])
+def check_saved_session():
+    if 'sessionid' in session and 'username' in session:
+        return jsonify({'has_saved_session': True, 'username': session['username'], 'profile_pic_url': session.get('profile_pic_url', '')})
+    else:
+        return jsonify({'has_saved_session': False})
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -83,7 +90,10 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        
+        session['sessionid'] = client.sessionid
+        session['username'] = insta_username
+        session['profile_pic_url'] = client.user_info_by_username(insta_username).profile_pic_url
+
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -94,6 +104,33 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+@app.route('/continue_session', methods=['POST'])
+def continue_session():
+    global client, s3, bucket_name
+    try:
+        client = Client()
+        client.login_by_sessionid(session['sessionid'])
+        session['logged_in'] = True
+        
+        # Configure AWS S3 client
+        aws_region = 'us-east-1'
+        bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
+        # Read AWS access key from secret file
+        with open('/etc/secrets/aws_access_key.txt', 'r') as file:
+            aws_access_key = file.read().strip()
+        # Read AWS secret key from secret file
+        with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
+            aws_secret_key = file.read().strip()
+        s3 = boto3.client('s3', 
+            aws_access_key_id=aws_access_key, 
+            aws_secret_access_key=aws_secret_key, 
+            region_name=aws_region
+        )
+        return jsonify({'status': 'Session restored successfully', 'version': app_version})
+    except Exception as e:
+        print(f"Session restore failed: {e} (App Version: {app_version})")
+        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
