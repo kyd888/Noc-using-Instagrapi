@@ -3,7 +3,7 @@ import time
 import random
 import uuid
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -41,27 +41,6 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
-
-@app.route('/check_saved_session', methods=['GET'])
-def check_saved_session():
-    session_exists = 'ig_session' in session
-    if session_exists:
-        ig_session = session['ig_session']
-        username = ig_session.get('username')
-        profile_pic_url = ig_session.get('profile_pic_url')
-        return jsonify({'session_exists': True, 'username': username, 'profile_pic_url': profile_pic_url})
-    return jsonify({'session_exists': False})
-
-@app.route('/continue_session', methods=['POST'])
-def continue_session():
-    global client
-    if 'ig_session' in session:
-        ig_session = session['ig_session']
-        client = Client()
-        client.set_settings(ig_session['settings'])
-        client.login_by_sessionid(ig_session['sessionid'])
-        return jsonify({'status': 'Session restored'})
-    return jsonify({'status': 'No saved session found'}), 400
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -104,15 +83,10 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        
-        # Save session details
-        session['ig_session'] = {
-            'username': insta_username,
-            'sessionid': client.sessionid,
-            'settings': client.get_settings(),
-            'profile_pic_url': client.user_info_by_username(insta_username).profile_pic_url
-        }
-        
+        session['ig_session'] = client.get_settings()  # Save session settings
+        profile = client.account_info()
+        session['profile_pic_url'] = profile.profile_pic_url
+
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -123,6 +97,32 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+@app.route('/continue_session', methods=['POST'])
+def continue_session():
+    global client
+    if 'ig_session' not in session:
+        return jsonify({'status': 'No saved session found', 'version': app_version})
+    
+    try:
+        client = Client()
+        client.set_settings(session['ig_session'])
+        client.login_by_sessionid(session['ig_session']['sessionid'])
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored', 'version': app_version})
+    except Exception as e:
+        print(f"Session restore failed: {e} (App Version: {app_version})")
+        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
+
+@app.route('/check_saved_session', methods=['GET'])
+def check_saved_session():
+    if 'ig_session' in session:
+        return jsonify({
+            'session_exists': True,
+            'profile_pic_url': session.get('profile_pic_url', ''),
+            'username': session['ig_session']['username']
+        })
+    return jsonify({'session_exists': False})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
@@ -343,7 +343,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
         analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
-
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
