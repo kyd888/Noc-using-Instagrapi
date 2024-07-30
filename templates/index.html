@@ -4,51 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comments Section</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        /* Basic styling for comments */
+        .comments-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .comment {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .comment .username {
+            font-weight: bold;
+        }
+        .comment .message {
+            margin-top: 5px;
+        }
+        .profile-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .profile-container img {
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            margin-right: 20px;
+        }
+        .profile-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
-    </div>
-
-    {% if 'insta_session' in session %}
-    <div id="session-options">
-        <button id="restore-session">Restore Session</button>
-        <button id="new-login">Login with New Information</button>
-    </div>
-    {% else %}
-    <form id="login-form" method="POST">
-        <fieldset class="no-border">
-            <legend><h2>Login</h2></legend>
-            <label for="insta_username">Instagram Username:</label><br>
-            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-            <label for="insta_password">Instagram Password:</label><br>
-            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-            <button type="submit"><span>→</span></button>
-        </fieldset>
-    </form>
-    {% endif %}
-
-    <div id="main-content" style="display:none;">
-        <div id="left-panel">
-            <form id="monitor-form">
-                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
-                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
-                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
-            </form>
-            <div id="account-posts-list"></div>
-        </div>
-        <div id="right-panel">
-            <h2>Comments</h2>
-            <div id="scanned-comments">
-                <div id="comment-text">No comments available.</div>
-                <div id="comment-counter"></div>
+    <div class="comments-container" id="comments-container">
+        <h2>Comments</h2>
+        {% if session_exists %}
+        <div class="profile-container">
+            <img src="{{ session['profile_picture'] }}" alt="Profile Picture">
+            <div>
+                <p>{{ session['insta_username'] }}</p>
+                <form id="restore-session-form" method="POST">
+                    <input type="hidden" name="restore_session" value="true">
+                    <button type="submit">Continue Session</button>
+                </form>
             </div>
         </div>
+        {% else %}
+        <form id="login-form" method="POST">
+            <fieldset class="no-border">
+                <legend><h2>Login</h2></legend>
+                <label for="insta_username">Instagram Username:</label><br>
+                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+                <label for="insta_password">Instagram Password:</label><br>
+                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+                <button type="submit"><span>→</span></button>
+            </fieldset>
+        </form>
+        {% endif %}
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        async function fetchComments() {
+            try {
+                const response = await fetch('/get_comments');
+                const data = await response.json();
+                console.log('Data received:', data);
+                
+                if (data.comments) {
+                    for (let username in data.comments) {
+                        displayComments(data.comments[username]);
+                    }
+                } else {
+                    console.error('No comments found');
+                }
+            } catch (error) {
+                console.error('Error fetching comments:', error);
+            }
+        }
+
+        function displayComments(comments) {
+            const commentsContainer = document.getElementById('comments-container');
+
+            comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment');
+
+                const usernameElement = document.createElement('span');
+                usernameElement.classList.add('username');
+                usernameElement.textContent = comment[0];
+
+                const messageElement = document.createElement('span');
+                messageElement.classList.add('message');
+                messageElement.textContent = `: ${comment[1]}`;
+
+                commentElement.appendChild(usernameElement);
+                commentElement.appendChild(messageElement);
+                commentsContainer.appendChild(commentElement);
+            });
+        }
+
+        // Fetch comments when the page loads
+        window.onload = fetchComments;
+    </script>
 </body>
 </html>
