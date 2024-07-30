@@ -12,9 +12,17 @@ from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
+from flask_session import Session
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
+
+# Configure Flask-Session
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'noc_'
+Session(app)
 
 # Version number
 app_version = "1.1.6"
@@ -40,7 +48,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global)
+    return render_template('index.html', version=app_version)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -84,6 +92,9 @@ def login():
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         
+        # Save session settings
+        session['insta_session'] = client.get_settings()
+        
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -94,6 +105,19 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+@app.route('/restore_session', methods=['POST'])
+def restore_session():
+    global client, s3, bucket_name
+    try:
+        client = Client()
+        client.set_settings(session['insta_session'])
+        client.login_by_sessionid(session['insta_session']['sessionid'])
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored', 'version': app_version})
+    except Exception as e:
+        print(f"Session restore failed: {e} (App Version: {app_version})")
+        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
