@@ -20,45 +20,36 @@
         .comment .message {
             margin-top: 5px;
         }
-        .profile-container {
+        /* Additional styling for the login form and session restore button */
+        .login-container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .profile-picture {
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+        }
+        .session-restore {
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 20px;
         }
-        .profile-container img {
-            border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            margin-right: 20px;
-        }
-        .profile-container button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
+        .session-restore button {
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="comments-container" id="comments-container">
-        <h2>Comments</h2>
+    <div class="login-container" id="login-container">
         {% if session_exists %}
-        <div class="profile-container">
-            <img src="{{ session['profile_picture'] }}" alt="Profile Picture">
-            <div>
-                <p>{{ session['insta_username'] }}</p>
-                <form id="restore-session-form" method="POST">
-                    <input type="hidden" name="restore_session" value="true">
-                    <button type="submit">Continue Session</button>
-                </form>
-            </div>
+        <div class="session-restore">
+            <img src="{{ session['profile_picture'] }}" alt="Profile Picture" class="profile-picture">
+            <button id="restore-session">Continue Session</button>
         </div>
-        {% else %}
-        <form id="login-form" method="POST">
+        {% endif %}
+        <form id="login-form" method="POST" action="/login">
             <fieldset class="no-border">
                 <legend><h2>Login</h2></legend>
                 <label for="insta_username">Instagram Username:</label><br>
@@ -68,7 +59,10 @@
                 <button type="submit"><span>→</span></button>
             </fieldset>
         </form>
-        {% endif %}
+    </div>
+
+    <div class="comments-container" id="comments-container">
+        <h2>Comments</h2>
     </div>
 
     <script>
@@ -78,12 +72,10 @@
                 const data = await response.json();
                 console.log('Data received:', data);
                 
-                if (data.comments) {
-                    for (let username in data.comments) {
-                        displayComments(data.comments[username]);
-                    }
+                if (data.comments.travisscott) {
+                    displayComments(data.comments.travisscott);
                 } else {
-                    console.error('No comments found');
+                    console.error('No comments found for travisscott');
                 }
             } catch (error) {
                 console.error('Error fetching comments:', error);
@@ -92,6 +84,7 @@
 
         function displayComments(comments) {
             const commentsContainer = document.getElementById('comments-container');
+            commentsContainer.innerHTML = '<h2>Comments</h2>';
 
             comments.forEach(comment => {
                 const commentElement = document.createElement('div');
@@ -113,6 +106,25 @@
 
         // Fetch comments when the page loads
         window.onload = fetchComments;
+
+        document.getElementById('restore-session')?.addEventListener('click', function() {
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ restore_session: true })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.status);
+                if (data.status === 'Session restored successfully') {
+                    document.getElementById('login-container').style.display = 'none';
+                    fetchComments();
+                }
+            })
+            .catch(error => console.error('Error restoring session:', error));
+        });
     </script>
 </body>
 </html>
