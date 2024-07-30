@@ -3,18 +3,8 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
-    // Function to check if there's a saved session
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(response) {
-            if (response.session_exists) {
-                $('#saved-session').show();
-                $('#profile-pic').attr('src', response.profile_picture);
-                $('#username-display').text(response.username);
-            } else {
-                $('#saved-session').hide();
-            }
-        });
-    }
+    // Check for saved session on page load
+    checkSavedSession();
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -29,18 +19,6 @@ $(document).ready(function() {
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
-        });
-    });
-
-    $('#restore-session').click(function() {
-        $.post('/restore_session', function(response) {
-            alert(response.status);
-            if (response.status === 'Session restored successfully') {
-                $('#saved-session').hide();
-                $('#main-content').show();
-            }
-        }).fail(function() {
-            alert('Session restoration failed.');
         });
     });
 
@@ -80,6 +58,32 @@ $(document).ready(function() {
             });
         }
     });
+
+    $('#restore-session').click(function() {
+        $.post('/restore_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored successfully') {
+                $('#saved-session').hide();
+                $('#main-content').show();
+            }
+        }).fail(function() {
+            alert('Failed to restore session');
+        });
+    });
+
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.session_exists) {
+                $('#profile-pic').attr('src', response.profile_picture);
+                $('#username-display').text(response.username);
+                $('#saved-session').show();
+                $('#login-form').hide();
+            } else {
+                $('#saved-session').hide();
+                $('#login-form').show();
+            }
+        });
+    }
 
     function checkStatus() {
         if (monitoring) {
@@ -135,7 +139,4 @@ $(document).ready(function() {
             $('#comment-counter').text('');
         }
     }
-
-    // Check for a saved session on page load
-    checkSavedSession();
 });
