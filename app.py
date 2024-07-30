@@ -42,11 +42,20 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
+@app.route('/check_saved_session', methods=['GET'])
+def check_saved_session():
+    saved_session = session.get('instagrapi_session')
+    if saved_session:
+        profile_picture = session.get('profile_picture', '')
+        username = session.get('username', '')
+        return jsonify({'session_exists': True, 'profile_picture': profile_picture, 'username': username})
+    return jsonify({'session_exists': False})
+
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
-    insta_username = request.form.get('insta_username')
-    insta_password = request.form.get('insta_password')
+    insta_username = request.form['insta_username']
+    insta_password = request.form['insta_password']
     
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
@@ -83,9 +92,12 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        session['insta_username'] = insta_username
-        session['insta_sessionid'] = client.sessionid
-        session['profile_picture'] = client.user_info_by_username(insta_username).profile_pic_url
+        
+        # Save session details
+        session['instagrapi_session'] = client.get_settings()
+        user_info = client.user_info_by_username(insta_username)
+        session['profile_picture'] = user_info.profile_pic_url
+        session['username'] = insta_username
         
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
@@ -98,31 +110,37 @@ def login():
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
 
+@app.route('/restore_session', methods=['POST'])
 def restore_session():
-    global client
+    global client, s3, bucket_name
     try:
         client = Client()
-        client.set_sessionid(session['insta_sessionid'])
-        client.get_timeline_feed()  # Test the session
+        client.set_settings(session['instagrapi_session'])
+        insta_username = session.get('username', '')
+
+        # Read AWS access key from secret file
+        with open('/etc/secrets/aws_access_key.txt', 'r') as file:
+            aws_access_key = file.read().strip()
+    
+        # Read AWS secret key from secret file
+        with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
+            aws_secret_key = file.read().strip()
+    
+        aws_region = 'us-east-1'
+        bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
+
+        session['logged_in'] = True
+        
+        # Configure AWS S3 client
+        s3 = boto3.client('s3', 
+            aws_access_key_id=aws_access_key, 
+            aws_secret_access_key=aws_secret_key, 
+            region_name=aws_region
+        )
         return jsonify({'status': 'Session restored successfully', 'version': app_version})
     except Exception as e:
         print(f"Session restore failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
-
-def login_with_retries(client, username, password, retries=5, initial_delay=60):
-    delay = initial_delay
-    for i in range(retries):
-        try:
-            client.login(username, password)
-            return
-        except ClientError as e:
-            if 'Please wait a few minutes before you try again' in str(e):
-                print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
-                time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
-                delay *= 2  # Exponential backoff
-            else:
-                raise e
-    raise Exception("Maximum retries reached for login")
 
 @app.route('/start_monitoring', methods=['POST'])
 def start_monitoring():
@@ -328,6 +346,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
         analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
