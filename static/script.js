@@ -3,7 +3,18 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
-    checkSavedSession();
+    // Check for saved session on page load
+    $.get('/check_saved_session', function(response) {
+        if (response.has_saved_session) {
+            $('#login-form').hide();
+            $('#session-container').show();
+            $('#session-username').text(response.username);
+            $('#session-profile-pic').attr('src', response.profile_pic_url);
+        } else {
+            $('#login-form').show();
+            $('#session-container').hide();
+        }
+    });
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -18,6 +29,17 @@ $(document).ready(function() {
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
+        });
+    });
+
+    $('#continue-session-button').click(function(event) {
+        event.preventDefault();
+        $.post('/continue_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session continued') {
+                $('#session-container').hide();
+                $('#main-content').show();
+            }
         });
     });
 
@@ -57,18 +79,6 @@ $(document).ready(function() {
             });
         }
     });
-
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(data) {
-            if (data.session_exists) {
-                $('#session-username').text(data.username);
-                $('#profile-pic').attr('src', data.profile_pic_url);
-                $('#session-container').show();
-            } else {
-                $('#login-form').show();
-            }
-        });
-    }
 
     function checkStatus() {
         if (monitoring) {
@@ -123,20 +133,5 @@ $(document).ready(function() {
             $('#comment-text').text('No comments available.');
             $('#comment-counter').text('');
         }
-    }
-
-    window.continueSession = function() {
-        $.post('/continue_session', function(response) {
-            alert(response.status);
-            if (response.status === 'Session restored') {
-                $('#session-container').hide();
-                $('#main-content').show();
-            }
-        });
-    }
-
-    window.showLoginForm = function() {
-        $('#session-container').hide();
-        $('#login-form').show();
     }
 });
