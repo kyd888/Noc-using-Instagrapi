@@ -8,61 +8,45 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
-}
-
-.container {
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
 }
 
 .logo-container {
-    text-align: center;
-    margin-bottom: 20px;
+    position: absolute;
+    top: 10px;
+    left: 10px;
 }
 
 .logo {
-    width: 100px;
+    width: 70px; /* Adjust size as needed */
     height: auto;
 }
 
-.session-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.profile-pic {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-}
-
-.session-details {
+h1 {
     text-align: center;
-    margin-bottom: 10px;
+    color: #4CAF50;
+    margin-top: 20px;
 }
 
 form {
-    width: 300px;
-    margin: 0 auto;
-    padding: 20px;
+    background: #fff;
+    padding: 50px;
+    margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    background: #fff;
+    max-width: 900px;
 }
 
 .no-border {
     border: none;
-    padding: 0;
+    padding: 20px 0; /* Add padding to top and bottom */
 }
 
 .no-border legend {
     font-size: 1.5em;
     font-weight: bold;
-    text-align: center;
+    text-align: center; /* Center the title */
+    width: 100%;
     margin-bottom: 10px;
 }
 
@@ -74,7 +58,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: calc(100% - 20px);
+    width: 89%; /* Make input fields the same width as the buttons */
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -84,34 +68,34 @@ input[type="password"] {
 button {
     width: 100%;
     padding: 10px;
-    border: 2px solid black;
+    border: 2px solid black; /* Black border */
     border-radius: 4px;
-    background-color: black;
-    color: white;
+    background-color: black; /* Black background */
+    color: white; /* White text color */
     font-size: 16px;
     cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effect */
 }
 
 button:hover {
-    background-color: white;
-    color: black;
+    background-color: white; /* White background on hover */
+    color: black; /* Black text on hover */
 }
 
 #main-content {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    margin-top: 20px;
+    padding: 0 20px; /* Add padding to the left and right */
 }
 
 #left-panel, #right-panel {
     background: #fff;
     padding: 20px;
+    margin: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: 45%;
-    margin: 10px;
+    width: 45%; /* Adjust as needed */
 }
 
 h2 {
@@ -128,4 +112,16 @@ h2 {
     text-align: center;
     font-size: 1.2em;
     margin-top: 10px;
+}
+
+#session-container {
+    text-align: center;
+}
+
+.profile-pic {
+    width: 100px; /* Adjust size as needed */
+    height: 100px; /* Adjust size as needed */
+    border-radius: 50%;
+    display: block;
+    margin: 0 auto;
 }
