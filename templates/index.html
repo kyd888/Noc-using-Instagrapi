@@ -1,31 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comments Section</title>
+    <style>
+        /* Basic styling for comments */
+        .comments-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .comment {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .comment .username {
+            font-weight: bold;
+        }
+        .comment .message {
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="logo-container">
         <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
     </div>
-    
-    <div id="saved-session" style="display: none;">
-        <img id="profile-pic" src="" alt="Profile Picture" class="profile-pic">
-        <p id="username-display"></p>
-        <button id="restore-session">Continue Session</button>
+    <div id="login-section">
+        <form id="login-form" method="POST">
+            <fieldset class="no-border">
+                <legend><h2>Login</h2></legend>
+                <label for="insta_username">Instagram Username:</label><br>
+                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+                <label for="insta_password">Instagram Password:</label><br>
+                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+                <button type="submit"><span>→</span></button>
+            </fieldset>
+        </form>
     </div>
-    
-    <form id="login-form" method="POST">
-        <fieldset class="no-border">
-            <legend><h2>Login</h2></legend>
-            <label for="insta_username">Instagram Username:</label><br>
-            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-            <label for="insta_password">Instagram Password:</label><br>
-            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-            <button type="submit"><span>→</span></button>
-        </fieldset>
-    </form>
+    <div id="continue-session-section" style="display: none;">
+        <h2>Continue Session</h2>
+        <div id="profile-info">
+            <img id="profile-pic" src="" alt="Profile Picture" width="50" height="50">
+            <span id="profile-username"></span>
+        </div>
+        <button id="continue-session-btn">Continue Session</button>
+        <button id="new-login-btn">Login with new account</button>
+    </div>
 
     <div id="main-content" style="display:none;">
         <div id="left-panel">
@@ -45,5 +66,8 @@
             </div>
         </div>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
