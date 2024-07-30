@@ -86,7 +86,7 @@ button:hover {
     width: 100%;
     padding: 20px; /* Add padding for better spacing */
     box-sizing: border-box;
-    padding: 40px; /* Increase padding to ensure elements are not at the edge */
+    padding: 80px; /* Increase padding to ensure elements are not at the edge */
 }
 
 #left-panel, #right-panel {
