@@ -47,7 +47,7 @@ def index():
 def login():
     global client, s3, bucket_name
 
-    if 'restore_session' in request.json:
+    if request.json and 'restore_session' in request.json:
         return restore_session()
 
     insta_username = request.form['insta_username']
@@ -90,7 +90,7 @@ def login():
         session['logged_in'] = True
         session['insta_username'] = insta_username
         session['insta_sessionid'] = client.sessionid
-        session['profile_picture'] = client.account_info().profile_pic_url
+        session['profile_picture'] = client.user_info_by_username(insta_username).profile_pic_url
         
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
@@ -107,7 +107,8 @@ def restore_session():
     global client
     try:
         client = Client()
-        client.login_by_sessionid(session['insta_sessionid'])
+        client.set_sessionid(session['insta_sessionid'])
+        client.get_timeline_feed()  # Test the session
         return jsonify({'status': 'Session restored successfully', 'version': app_version})
     except Exception as e:
         print(f"Session restore failed: {e} (App Version: {app_version})")
@@ -332,6 +333,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
         analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
