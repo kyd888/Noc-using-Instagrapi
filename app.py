@@ -62,6 +62,8 @@ def login():
             client.login_by_sessionid(session['sessionid'])
             client.set_cookie(session['cookies'])
             session['logged_in'] = True
+            session['insta_username'] = session.get('insta_username')
+            session['profile_picture'] = session.get('profile_picture')
             return jsonify({'status': 'Session restored successfully', 'version': app_version})
         except Exception as e:
             print(f"Session restore failed: {e} (App Version: {app_version})")
@@ -103,9 +105,12 @@ def login():
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         session['insta_username'] = insta_username
-        session['insta_password'] = insta_password
         session['sessionid'] = client.sessionid  # Save the sessionid
         session['cookies'] = client.cookie_jar.dump()  # Save cookies
+
+        # Fetch and store the profile picture URL
+        user_info = client.user_info_by_username(insta_username)
+        session['profile_picture'] = user_info.profile_pic_url
 
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
