@@ -3,6 +3,21 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
+    $('#restore-session').click(function() {
+        $.post('/restore_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored') {
+                $('#session-options').hide();
+                $('#main-content').show();
+            }
+        });
+    });
+
+    $('#new-login').click(function() {
+        $('#session-options').hide();
+        $('#login-form').show();
+    });
+
     $('#login-form').submit(function(event) {
         event.preventDefault();
         const $loginButton = $(this).find('button[type="submit"]');
@@ -65,7 +80,7 @@ $(document).ready(function() {
 
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
-                    updateNextCycleTimer(data.seconds_until_next_cycle);
+                    $('#monitoring-status').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
                 checkStatus();
@@ -82,10 +97,6 @@ $(document).ready(function() {
                 $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
             });
         }
-    }
-
-    function updateNextCycleTimer(seconds) {
-        $('#next-cycle-timer').text(`${seconds} seconds until next monitoring cycle`);
     }
 
     function updateCommentsQueue(commentsData) {
