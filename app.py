@@ -40,18 +40,13 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    session_exists = 'insta_username' in session and 'insta_sessionid' in session
-    return render_template('index.html', version=app_version, session_exists=session_exists)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
-
-    if request.json and 'restore_session' in request.json:
-        return restore_session()
-
-    insta_username = request.form['insta_username']
-    insta_password = request.form['insta_password']
+    insta_username = request.form.get('insta_username')
+    insta_password = request.form.get('insta_password')
     
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
@@ -333,7 +328,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
         analyze_comments_with_openai(new_comments, unique_id)
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
-
 
 def analyze_comments_with_openai(comments, unique_id):
     try:
