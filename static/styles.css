@@ -84,9 +84,9 @@ button:hover {
     flex-direction: column; /* Stack elements vertically */
     align-items: center; /* Center align elements */
     width: 100%;
-    padding: 10px; /* Add padding for better spacing */
+    padding: 20px; /* Add padding for better spacing */
     box-sizing: border-box;
-    padding: 20px; /* Add padding to ensure elements are not at the edge */
+    padding: 40px; /* Increase padding to ensure elements are not at the edge */
 }
 
 #left-panel, #right-panel {
@@ -124,7 +124,7 @@ h2 {
     #main-content {
         flex-direction: row; /* Place elements side by side on larger screens */
         justify-content: space-between;
-        padding: 40px; /* Increase padding for larger screens */
+        padding: 80px; /* Increase padding for larger screens */
     }
 
     #left-panel, #right-panel {
