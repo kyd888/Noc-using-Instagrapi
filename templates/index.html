@@ -1,15 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comments Section</title>
+    <style>
+        /* Basic styling for comments */
+        .comments-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .comment {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .comment .username {
+            font-weight: bold;
+        }
+        .comment .message {
+            margin-top: 5px;
+        }
+        /* Styling for saved session */
+        .session-container {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .profile-pic {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .session-details {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
-    </div>
-    <div id="login-section">
+    <div class="comments-container" id="comments-container">
+        <h2>Comments</h2>
+        <div id="saved-session" style="display: none;">
+            <div class="session-container">
+                <img src="" alt="Profile Picture" class="profile-pic" id="profile-pic">
+                <div class="session-details">
+                    <span id="session-username"></span>
+                    <button onclick="continueSession()">Continue Session</button>
+                </div>
+            </div>
+        </div>
         <form id="login-form" method="POST">
             <fieldset class="no-border">
                 <legend><h2>Login</h2></legend>
@@ -21,33 +61,84 @@
             </fieldset>
         </form>
     </div>
-    <div id="continue-session-section" style="display:none;">
-        <h2>Continue Session</h2>
-        <div id="profile-info">
-            <img id="profile-pic" src="" alt="Profile Picture">
-            <span id="profile-username"></span>
-        </div>
-        <button id="continue-session">Continue Session</button>
-        <button id="new-login">Login with new account</button>
-    </div>
 
-    <div id="main-content" style="display:none;">
-        <div id="left-panel">
-            <form id="monitor-form">
-                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
-                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
-                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
-                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
-            </form>
-            <div id="account-posts-list"></div>
-        </div>
-        <div id="right-panel">
-            <h2>Comments</h2>
-            <div id="scanned-comments">
-                <div id="comment-text"></div>
-                <div id="comment-counter"></div>
-            </div>
-        </div>
-    </div>
+    <script>
+        async function fetchComments() {
+            try {
+                const response = await fetch('/get_comments');
+                const data = await response.json();
+                console.log('Data received:', data);
+                
+                if (data.travisscott) {
+                    displayComments(data.travisscott);
+                } else {
+                    console.error('No comments found for travisscott');
+                }
+            } catch (error) {
+                console.error('Error fetching comments:', error);
+            }
+        }
+
+        function displayComments(comments) {
+            const commentsContainer = document.getElementById('comments-container');
+
+            comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment');
+
+                const usernameElement = document.createElement('span');
+                usernameElement.classList.add('username');
+                usernameElement.textContent = comment[0];
+
+                const messageElement = document.createElement('span');
+                messageElement.classList.add('message');
+                messageElement.textContent = `: ${comment[1]}`;
+
+                commentElement.appendChild(usernameElement);
+                commentElement.appendChild(messageElement);
+                commentsContainer.appendChild(commentElement);
+            });
+        }
+
+        // Fetch comments when the page loads
+        window.onload = fetchComments;
+
+        async function checkSavedSession() {
+            try {
+                const response = await fetch('/check_saved_session');
+                const data = await response.json();
+                if (data.session_exists) {
+                    document.getElementById('login-form').style.display = 'none';
+                    document.getElementById('saved-session').style.display = 'block';
+                    document.getElementById('session-username').textContent = data.username;
+                    document.getElementById('profile-pic').src = data.profile_pic_url;
+                }
+            } catch (error) {
+                console.error('Error checking saved session:', error);
+            }
+        }
+
+        async function continueSession() {
+            try {
+                const response = await fetch('/continue_session', { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'Session restored') {
+                    // Handle successful session restore
+                    console.log('Session restored:', data);
+                } else {
+                    // Handle session restore failure
+                    console.error('Session restore failed:', data.status);
+                }
+            } catch (error) {
+                console.error('Error continuing session:', error);
+            }
+        }
+
+        // Check for saved session when the page loads
+        window.onload = function() {
+            fetchComments();
+            checkSavedSession();
+        };
+    </script>
 </body>
 </html>
