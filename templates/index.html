@@ -1,130 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comments Section</title>
-    <style>
-        /* Basic styling for comments */
-        .comments-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .comment {
-            border-bottom: 1px solid #ddd;
-            padding: 10px 0;
-        }
-        .comment .username {
-            font-weight: bold;
-        }
-        .comment .message {
-            margin-top: 5px;
-        }
-        /* Additional styling for the login form and session restore button */
-        .login-container {
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        .profile-picture {
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-        }
-        .session-restore {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .session-restore button {
-            margin-left: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-    <div class="login-container" id="login-container">
-        {% if session_exists %}
-        <div class="session-restore">
-            <img src="{{ session['profile_picture'] }}" alt="Profile Picture" class="profile-picture">
-            <button id="restore-session">Continue Session</button>
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
+    </div>
+    <form id="login-form" method="POST">
+        <fieldset class="no-border">
+            <legend><h2>Login</h2></legend>
+            <label for="insta_username">Instagram Username:</label><br>
+            <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+            <label for="insta_password">Instagram Password:</label><br>
+            <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+            <button type="submit"><span>→</span></button>
+        </fieldset>
+    </form>
+
+    {% if session_exists %}
+    <div id="session-restore">
+        <img src="{{ session['profile_picture'] }}" alt="Profile Picture" class="profile-pic">
+        <p>{{ session['insta_username'] }}</p>
+        <button id="restore-session"><span>Continue Session</span></button>
+    </div>
+    {% endif %}
+
+    <div id="main-content" style="display:none;">
+        <div id="left-panel">
+            <form id="monitor-form">
+                <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+                <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+                <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
+                <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
+            </form>
+            <div id="account-posts-list"></div>
         </div>
-        {% endif %}
-        <form id="login-form" method="POST" action="/login">
-            <fieldset class="no-border">
-                <legend><h2>Login</h2></legend>
-                <label for="insta_username">Instagram Username:</label><br>
-                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
-                <label for="insta_password">Instagram Password:</label><br>
-                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
-                <button type="submit"><span>→</span></button>
-            </fieldset>
-        </form>
+        <div id="right-panel">
+            <h2>Comments</h2>
+            <div id="scanned-comments">
+                <div id="comment-text"></div>
+                <div id="comment-counter"></div>
+            </div>
+        </div>
     </div>
-
-    <div class="comments-container" id="comments-container">
-        <h2>Comments</h2>
-    </div>
-
-    <script>
-        async function fetchComments() {
-            try {
-                const response = await fetch('/get_comments');
-                const data = await response.json();
-                console.log('Data received:', data);
-                
-                if (data.comments.travisscott) {
-                    displayComments(data.comments.travisscott);
-                } else {
-                    console.error('No comments found for travisscott');
-                }
-            } catch (error) {
-                console.error('Error fetching comments:', error);
-            }
-        }
-
-        function displayComments(comments) {
-            const commentsContainer = document.getElementById('comments-container');
-            commentsContainer.innerHTML = '<h2>Comments</h2>';
-
-            comments.forEach(comment => {
-                const commentElement = document.createElement('div');
-                commentElement.classList.add('comment');
-
-                const usernameElement = document.createElement('span');
-                usernameElement.classList.add('username');
-                usernameElement.textContent = comment[0];
-
-                const messageElement = document.createElement('span');
-                messageElement.classList.add('message');
-                messageElement.textContent = `: ${comment[1]}`;
-
-                commentElement.appendChild(usernameElement);
-                commentElement.appendChild(messageElement);
-                commentsContainer.appendChild(commentElement);
-            });
-        }
-
-        // Fetch comments when the page loads
-        window.onload = fetchComments;
-
-        document.getElementById('restore-session')?.addEventListener('click', function() {
-            fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ restore_session: true })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.status);
-                if (data.status === 'Session restored successfully') {
-                    document.getElementById('login-container').style.display = 'none';
-                    fetchComments();
-                }
-            })
-            .catch(error => console.error('Error restoring session:', error));
-        });
-    </script>
 </body>
 </html>
