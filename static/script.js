@@ -3,21 +3,6 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
-    $('#restore-session').click(function() {
-        $.post('/restore_session', function(response) {
-            alert(response.status);
-            if (response.status === 'Session restored') {
-                $('#session-options').hide();
-                $('#main-content').show();
-            }
-        });
-    });
-
-    $('#new-login').click(function() {
-        $('#session-options').hide();
-        $('#login-form').show();
-    });
-
     $('#login-form').submit(function(event) {
         event.preventDefault();
         const $loginButton = $(this).find('button[type="submit"]');
@@ -25,12 +10,25 @@ $(document).ready(function() {
         $.post('/login', $(this).serialize(), function(response) {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
-            if (response.status === 'Login successful') {
+            if (response.status === 'Login successful' || response.status === 'Session restored successfully') {
                 $('#login-form').hide();
                 $('#main-content').show();
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
+        });
+    });
+
+    $('#restore-session-form').submit(function(event) {
+        event.preventDefault();
+        $.post('/login', $(this).serialize(), function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored successfully') {
+                $('#restore-session-form').hide();
+                $('#main-content').show();
+            }
+        }).fail(function() {
+            alert('Failed to restore session');
         });
     });
 
@@ -80,7 +78,6 @@ $(document).ready(function() {
 
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
-                    $('#monitoring-status').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
                 checkStatus();
@@ -104,7 +101,7 @@ $(document).ready(function() {
         for (let username in commentsData) {
             const posts = commentsData[username];
             posts.forEach(post => {
-                post.comments.forEach(comment => {
+                post.forEach(comment => {
                     commentsQueue.push(comment);
                 });
             });
