@@ -12,12 +12,12 @@ body {
 
 .logo-container {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 10px;
+    left: 10px;
 }
 
 .logo {
-    width: 100px; /* Adjust size as needed */
+    width: 70px; /* Adjust size as needed */
     height: auto;
 }
 
@@ -27,34 +27,13 @@ h1 {
     margin-top: 20px;
 }
 
-form, #continue-session-section {
+form {
     background: #fff;
     padding: 50px;
     margin: 20px auto;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    width: 100%;
-    text-align: center;
-}
-
-#profile-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-#profile-pic {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 10px;
-}
-
-#profile-username {
-    font-size: 1.2em;
-    font-weight: bold;
+    max-width: 900px;
 }
 
 .no-border {
@@ -78,7 +57,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: calc(100% - 22px); /* Make input fields the same width as the buttons */
+    width: 89%; /* Make input fields the same width as the buttons */
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -86,7 +65,7 @@ input[type="password"] {
 }
 
 button {
-    width: calc(100% - 22px);
+    width: 100%;
     padding: 10px;
     border: 2px solid black; /* Black border */
     border-radius: 4px;
@@ -95,7 +74,6 @@ button {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effect */
-    margin: 5px 0;
 }
 
 button:hover {
@@ -106,10 +84,8 @@ button:hover {
 #main-content {
     display: flex;
     justify-content: space-between;
-    width: calc(100% - 80px);
-    padding: 20px;
-    max-width: 1200px;
-    margin: 20px auto;
+    width: 80%; /* Increase to create more space from edges */
+    padding: 0 20px; /* Add padding */
 }
 
 #left-panel, #right-panel {
@@ -118,8 +94,7 @@ button:hover {
     margin: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: 48%;
-    box-sizing: border-box;
+    width: 45%; /* Adjust as needed */
 }
 
 h2 {
@@ -138,18 +113,44 @@ h2 {
     margin-top: 10px;
 }
 
-@media (max-width: 768px) {
-    #main-content {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    #left-panel, #right-panel {
-        width: 90%;
-        margin: 10px;
-    }
-
-    form, #continue-session-section {
-        padding: 20px;
-    }
+.comments-container {
+    max-width: 600px;
+    margin: 0 auto;
 }
+
+.comment {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+}
+
+.comment .username {
+    font-weight: bold;
+}
+
+.comment .message {
+    margin-top: 5px;
+}
+
+/* Styling for saved session */
+.session-container {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.session-details {
+    display: flex;
+    flex-direction: column;
+}
+
+#saved-session {
+    display: none; /* Initially hide the saved session section */
+}
+
