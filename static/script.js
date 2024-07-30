@@ -3,19 +3,7 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(response) {
-            if (response.session_exists) {
-                $('#login-form').hide();
-                $('#session-container').show();
-                $('#session-profile-pic').attr('src', response.profile_pic_url);
-                $('#session-username').text(response.username);
-            } else {
-                $('#login-form').show();
-                $('#session-container').hide();
-            }
-        });
-    }
+    checkSavedSession();
 
     $('#login-form').submit(function(event) {
         event.preventDefault();
@@ -33,14 +21,19 @@ $(document).ready(function() {
         });
     });
 
-    $('#continue-session-button').click(function() {
+    $('#continue-session').click(function() {
         $.post('/continue_session', function(response) {
             alert(response.status);
-            if (response.status === 'Session continued') {
-                $('#session-container').hide();
+            if (response.status === 'Session restored') {
+                $('#session-section').hide();
                 $('#main-content').show();
             }
         });
+    });
+
+    $('#new-session').click(function() {
+        $('#session-section').hide();
+        $('#login-form').show();
     });
 
     $('#monitor-form').submit(function(event) {
@@ -135,5 +128,17 @@ $(document).ready(function() {
         }
     }
 
-    checkSavedSession();
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.has_session) {
+                $('#profile-pic').attr('src', response.profile_pic_url);
+                $('#username').text(response.username);
+                $('#login-form').hide();
+                $('#session-section').show();
+            } else {
+                $('#session-section').hide();
+                $('#login-form').show();
+            }
+        });
+    }
 });
