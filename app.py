@@ -3,7 +3,7 @@ import time
 import random
 import uuid
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -44,10 +44,26 @@ def index():
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
-    if 'sessionid' in session and 'username' in session:
-        return jsonify({'has_saved_session': True, 'username': session['username'], 'profile_pic_url': session.get('profile_pic_url', '')})
-    else:
-        return jsonify({'has_saved_session': False})
+    saved_session = session.get('ig_session')
+    if saved_session:
+        profile_pic_url = session.get('profile_pic_url', '')
+        username = session.get('ig_username', '')
+        return jsonify({'has_saved_session': True, 'profile_pic_url': profile_pic_url, 'username': username})
+    return jsonify({'has_saved_session': False})
+
+@app.route('/continue_session', methods=['POST'])
+def continue_session():
+    global client, s3, bucket_name
+    saved_session = session.get('ig_session')
+    if not saved_session:
+        return jsonify({'status': 'No saved session available'}), 403
+    try:
+        client = Client()
+        client.set_settings(saved_session)
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored successfully'})
+    except Exception as e:
+        return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -90,9 +106,12 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        session['sessionid'] = client.sessionid
-        session['username'] = insta_username
-        session['profile_pic_url'] = client.user_info_by_username(insta_username).profile_pic_url
+        session['ig_session'] = client.get_settings()
+        session['ig_username'] = insta_username
+
+        # Fetch and save the profile picture URL
+        profile_info = client.user_info_by_username(insta_username)
+        session['profile_pic_url'] = profile_info.profile_pic_url
 
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
@@ -104,33 +123,6 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
-
-@app.route('/continue_session', methods=['POST'])
-def continue_session():
-    global client, s3, bucket_name
-    try:
-        client = Client()
-        client.login_by_sessionid(session['sessionid'])
-        session['logged_in'] = True
-        
-        # Configure AWS S3 client
-        aws_region = 'us-east-1'
-        bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
-        # Read AWS access key from secret file
-        with open('/etc/secrets/aws_access_key.txt', 'r') as file:
-            aws_access_key = file.read().strip()
-        # Read AWS secret key from secret file
-        with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
-            aws_secret_key = file.read().strip()
-        s3 = boto3.client('s3', 
-            aws_access_key_id=aws_access_key, 
-            aws_secret_access_key=aws_secret_key, 
-            region_name=aws_region
-        )
-        return jsonify({'status': 'Session restored successfully', 'version': app_version})
-    except Exception as e:
-        print(f"Session restore failed: {e} (App Version: {app_version})")
-        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
