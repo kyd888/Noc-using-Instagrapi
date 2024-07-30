@@ -90,13 +90,6 @@ def login():
             aws_secret_access_key=aws_secret_key, 
             region_name=aws_region
         )
-        
-        # Save session details
-        session['ig_session'] = {
-            'username': insta_username,
-            'settings': client.get_settings(),
-            'profile_pic_url': client.user_info_by_username(insta_username).profile_pic_url
-        }
         return jsonify({'status': 'Login successful', 'version': app_version})
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
@@ -342,12 +335,15 @@ def analyze_comments_with_openai(comments, unique_id):
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
     if 'ig_session' in session:
+        ig_session = session['ig_session']
+        profile_pic_url = ig_session.get('profile_pic_url', '/static/default_profile.png')
         return jsonify({
-            'has_session': True,
-            'username': session['ig_session']['username'],
-            'profile_pic_url': session['ig_session']['profile_pic_url']
+            'session_exists': True,
+            'username': ig_session['username'],
+            'profile_pic_url': profile_pic_url
         })
-    return jsonify({'has_session': False})
+    else:
+        return jsonify({'session_exists': False})
 
 @app.route('/continue_session', methods=['POST'])
 def continue_session():
@@ -356,10 +352,10 @@ def continue_session():
         ig_session = session['ig_session']
         client = Client()
         client.set_settings(ig_session['settings'])
-        client.login_by_sessionid(ig_session['settings']['sessionid'])
+        client.set_sessionid(ig_session['sessionid'])
         session['logged_in'] = True
         return jsonify({'status': 'Session restored', 'version': app_version})
-    return jsonify({'status': 'No session to restore', 'version': app_version})
+    return jsonify({'status': 'No session to restore', 'version': app_version}), 400
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
