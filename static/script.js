@@ -3,6 +3,19 @@ $(document).ready(function() {
     let commentsQueue = [];
     let commentIndex = 0;
 
+    // Function to check if there's a saved session
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.session_exists) {
+                $('#saved-session').show();
+                $('#profile-pic').attr('src', response.profile_picture);
+                $('#username-display').text(response.username);
+            } else {
+                $('#saved-session').hide();
+            }
+        });
+    }
+
     $('#login-form').submit(function(event) {
         event.preventDefault();
         const $loginButton = $(this).find('button[type="submit"]');
@@ -20,14 +33,14 @@ $(document).ready(function() {
     });
 
     $('#restore-session').click(function() {
-        $.post('/login', { restore_session: true }, function(response) {
+        $.post('/restore_session', function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
-                $('#session-restore').hide();
+                $('#saved-session').hide();
                 $('#main-content').show();
             }
         }).fail(function() {
-            alert('Failed to restore session');
+            alert('Session restoration failed.');
         });
     });
 
@@ -122,4 +135,7 @@ $(document).ready(function() {
             $('#comment-counter').text('');
         }
     }
+
+    // Check for a saved session on page load
+    checkSavedSession();
 });
