@@ -4,6 +4,7 @@ import random
 import uuid
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, session
+from flask_session import Session
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -12,16 +13,12 @@ from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
-from flask_session import Session
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
 # Configure Flask-Session
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_KEY_PREFIX'] = 'noc_'
 Session(app)
 
 # Version number
@@ -39,6 +36,7 @@ csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
+break_duration = 3600  # Break duration in seconds (1 hour)
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
 next_cycle_time = None  # Initialize next_cycle_time
@@ -48,25 +46,38 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version)
+    if 'sessionid' in session:
+        return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=True)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=False)
 
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
-    
+
+    if 'restore_session' in request.form:
+        try:
+            client = Client()
+            client.login_by_sessionid(session['sessionid'])
+            client.set_cookie(session['cookies'])
+            session['logged_in'] = True
+            return jsonify({'status': 'Session restored successfully', 'version': app_version})
+        except Exception as e:
+            print(f"Session restore failed: {e} (App Version: {app_version})")
+            return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
+
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
         aws_access_key = file.read().strip()
-    
+
     # Read AWS secret key from secret file
     with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
         aws_secret_key = file.read().strip()
-    
+
     aws_region = 'us-east-1'
     bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
-    
+
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
@@ -91,10 +102,11 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        
-        # Save session settings
-        session['insta_session'] = client.get_settings()
-        
+        session['insta_username'] = insta_username
+        session['insta_password'] = insta_password
+        session['sessionid'] = client.sessionid  # Save the sessionid
+        session['cookies'] = client.cookie_jar.dump()  # Save cookies
+
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -105,19 +117,6 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
-
-@app.route('/restore_session', methods=['POST'])
-def restore_session():
-    global client, s3, bucket_name
-    try:
-        client = Client()
-        client.set_settings(session['insta_session'])
-        client.login_by_sessionid(session['insta_session']['sessionid'])
-        session['logged_in'] = True
-        return jsonify({'status': 'Session restored', 'version': app_version})
-    except Exception as e:
-        print(f"Session restore failed: {e} (App Version: {app_version})")
-        return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
 
 def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
