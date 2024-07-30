@@ -4,7 +4,6 @@ import random
 import uuid
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, session
-from flask_session import Session
 from instagrapi import Client
 from threading import Thread
 import requests
@@ -16,10 +15,6 @@ import openai
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
-
-# Configure Flask-Session
-app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
 
 # Version number
 app_version = "1.1.6"
@@ -36,38 +31,24 @@ csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
-break_duration = 3600  # Break duration in seconds (1 hour)
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
-next_cycle_time = None  # Initialize next_cycle_time
+next_cycle_time = None  # Initialize next cycle time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 @app.route('/')
 def index():
-    if 'sessionid' in session:
-        return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=True)
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=False)
+    session_exists = 'insta_username' in session and 'sessionid' in session
+    return render_template('index.html', version=app_version, csv_data=csv_data_global, session_exists=session_exists)
 
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
-    insta_username = request.form['insta_username']
-    insta_password = request.form['insta_password']
-
-    if 'restore_session' in request.form:
-        try:
-            client = Client()
-            client.login_by_sessionid(session['sessionid'])
-            client.set_cookie(session['cookies'])
-            session['logged_in'] = True
-            session['insta_username'] = session.get('insta_username')
-            session['profile_picture'] = session.get('profile_picture')
-            return jsonify({'status': 'Session restored successfully', 'version': app_version})
-        except Exception as e:
-            print(f"Session restore failed: {e} (App Version: {app_version})")
-            return jsonify({'status': f'Session restore failed: {str(e)}', 'version': app_version})
+    insta_username = request.form.get('insta_username')
+    insta_password = request.form.get('insta_password')
+    restore_session = request.form.get('restore_session')
 
     # Read AWS access key from secret file
     with open('/etc/secrets/aws_access_key.txt', 'r') as file:
@@ -81,10 +62,7 @@ def login():
     bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
 
     try:
-        print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
-
-        # Set device settings to simulate an iPhone 12 Pro
         client.set_device({
             "manufacturer": "Apple",
             "model": "iPhone12,3",
@@ -99,18 +77,17 @@ def login():
             "device_guid": str(uuid.uuid4())
         })
 
-        # Debugging: Print the device settings
-        print(f"Device settings: {client.device}")
+        if restore_session:
+            client.login_by_sessionid(session['sessionid'])
+            print("Session restored successfully.")
+            return jsonify({'status': 'Session restored successfully', 'version': app_version})
 
+        print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         session['insta_username'] = insta_username
-        session['sessionid'] = client.sessionid  # Save the sessionid
-        session['cookies'] = client.cookie_jar.dump()  # Save cookies
-
-        # Fetch and store the profile picture URL
-        user_info = client.user_info_by_username(insta_username)
-        session['profile_picture'] = user_info.profile_pic_url
+        session['sessionid'] = client.sessionid
+        session['profile_picture'] = client.user_info_by_username(insta_username).profile_pic_url_hd
 
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
