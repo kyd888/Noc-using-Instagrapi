@@ -3,140 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comments Section</title>
-    <style>
-        /* Basic styling for comments */
-        .comments-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .comment {
-            border-bottom: 1px solid #ddd;
-            padding: 10px 0;
-        }
-        .comment .username {
-            font-weight: bold;
-        }
-        .comment .message {
-            margin-top: 5px;
-        }
-        /* Styling for saved session */
-        .session-container {
-            display: flex;
-            align-items: center;
-            margin-top: 20px;
-        }
-        .profile-pic {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-        .session-details {
-            display: flex;
-            flex-direction: column;
-        }
-    </style>
+    <title>Instagram Monitoring Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-    <div class="comments-container" id="comments-container">
-        <h2>Comments</h2>
+    <div class="container">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="NOC Logo" class="logo">
+        </div>
         <div id="session-container" class="session-container" style="display: none;">
             <img id="profile-pic" class="profile-pic" src="" alt="Profile Picture">
             <div class="session-details">
                 <span id="session-username"></span>
                 <button id="continue-session" onclick="continueSession()">Continue Session</button>
             </div>
+            <button onclick="showLoginForm()">Login with new account</button>
         </div>
-        <form id="login-form" style="display: none;">
-            <label for="insta_username">Instagram Username:</label>
-            <input type="text" id="insta_username" name="insta_username">
-            <label for="insta_password">Instagram Password:</label>
-            <input type="password" id="insta_password" name="insta_password">
-            <button type="submit">Login</button>
+        <form id="login-form" method="POST" style="display: none;">
+            <fieldset class="no-border">
+                <legend><h2>Login</h2></legend>
+                <label for="insta_username">Instagram Username:</label><br>
+                <input type="text" id="insta_username" name="insta_username" placeholder="Username"><br><br>
+                <label for="insta_password">Instagram Password:</label><br>
+                <input type="password" id="insta_password" name="insta_password" placeholder="Password"><br><br>
+                <button type="submit"><span>→</span></button>
+            </fieldset>
         </form>
-        <div id="no-comments">No comments available.</div>
+        <div id="main-content" style="display:none;">
+            <div id="left-panel">
+                <form id="monitor-form">
+                    <label for="target_usernames">Target Usernames (comma-separated):</label><br>
+                    <input type="text" id="target_usernames" name="target_usernames" placeholder="Username1, Username2, ..."><br><br>
+                    <button type="submit" id="start-monitoring"><span>Start Monitoring</span></button>
+                    <button type="button" id="stop-monitoring" style="display:none;"><span>Stop Monitoring</span></button>
+                </form>
+                <div id="account-posts-list"></div>
+            </div>
+            <div id="right-panel">
+                <h2>Comments</h2>
+                <div id="scanned-comments">
+                    <div id="comment-text">No comments available.</div>
+                    <div id="comment-counter"></div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            checkSavedSession();
-
-            document.getElementById('login-form').addEventListener('submit', function (e) {
-                e.preventDefault();
-                login();
-            });
-        });
-
-        function checkSavedSession() {
-            fetch('/check_saved_session')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.session_exists) {
-                        document.getElementById('session-container').style.display = 'flex';
-                        document.getElementById('profile-pic').src = data.profile_pic_url;
-                        document.getElementById('session-username').textContent = data.username;
-                    } else {
-                        document.getElementById('login-form').style.display = 'block';
-                    }
-                });
-        }
-
-        function continueSession() {
-            fetch('/continue_session', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'Session restored') {
-                        window.location.reload();
-                    } else {
-                        alert(data.status);
-                    }
-                });
-        }
-
-        function login() {
-            const formData = new FormData(document.getElementById('login-form'));
-            fetch('/login', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'Login successful') {
-                        window.location.reload();
-                    } else {
-                        alert(data.status);
-                    }
-                });
-        }
-
-        function fetchComments() {
-            fetch('/get_comments')
-                .then(response => response.json())
-                .then(data => {
-                    const commentsContainer = document.getElementById('comments-container');
-                    const noComments = document.getElementById('no-comments');
-                    noComments.style.display = 'none';
-                    const comments = data.comments;
-                    for (const username in comments) {
-                        comments[username].forEach(comment => {
-                            const commentElement = document.createElement('div');
-                            commentElement.classList.add('comment');
-                            const usernameElement = document.createElement('span');
-                            usernameElement.classList.add('username');
-                            usernameElement.textContent = comment[0];
-                            const messageElement = document.createElement('span');
-                            messageElement.classList.add('message');
-                            messageElement.textContent = `: ${comment[1]}`;
-                            commentElement.appendChild(usernameElement);
-                            commentElement.appendChild(messageElement);
-                            commentsContainer.appendChild(commentElement);
-                        });
-                    }
-                });
-        }
-
-        window.onload = fetchComments;
-    </script>
 </body>
 </html>
