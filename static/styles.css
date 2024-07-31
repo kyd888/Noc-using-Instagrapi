@@ -97,7 +97,7 @@ button {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effect */
-    margin: 5px 0;
+    margin: 15px 0; /* Adjust margin to ensure proper spacing */
 }
 
 button:hover {
@@ -164,5 +164,3 @@ h2 {
         padding: 20px;
     }
 }
-
-
