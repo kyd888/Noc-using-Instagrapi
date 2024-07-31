@@ -5,6 +5,32 @@ $(document).ready(function() {
 
     checkSavedSession();
 
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.has_saved_session) {
+                $('#profile-pic').attr('src', response.profile_pic_url);
+                $('#profile-username').text(response.username);
+                $('#login-form').hide();
+                $('#continue-session-section').show();
+            }
+        });
+    }
+
+    $('#continue-session').click(function() {
+        $.post('/continue_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored successfully') {
+                $('#continue-session-section').hide();
+                $('#main-content').show();
+            }
+        });
+    });
+
+    $('#new-login').click(function() {
+        $('#continue-session-section').hide();
+        $('#login-form').show();
+    });
+
     $('#login-form').submit(function(event) {
         event.preventDefault();
         const $loginButton = $(this).find('button[type="submit"]');
@@ -19,21 +45,6 @@ $(document).ready(function() {
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
         });
-    });
-
-    $('#continue-session').click(function() {
-        $.post('/continue_session', function(response) {
-            alert(response.status);
-            if (response.status === 'Session restored') {
-                $('#session-section').hide();
-                $('#main-content').show();
-            }
-        });
-    });
-
-    $('#new-session').click(function() {
-        $('#session-section').hide();
-        $('#login-form').show();
     });
 
     $('#monitor-form').submit(function(event) {
@@ -82,6 +93,7 @@ $(document).ready(function() {
 
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
+                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
                 checkStatus();
@@ -126,19 +138,5 @@ $(document).ready(function() {
             $('#comment-text').text('No comments available.');
             $('#comment-counter').text('');
         }
-    }
-
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(response) {
-            if (response.has_session) {
-                $('#profile-pic').attr('src', response.profile_pic_url);
-                $('#username').text(response.username);
-                $('#login-form').hide();
-                $('#session-section').show();
-            } else {
-                $('#session-section').hide();
-                $('#login-form').show();
-            }
-        });
     }
 });
