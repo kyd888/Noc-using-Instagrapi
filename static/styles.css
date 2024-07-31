@@ -7,7 +7,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;  /* Ensure the body takes at least full viewport height */
 }
 
 .logo-container {
@@ -107,9 +107,9 @@ button:hover {
     display: flex;
     justify-content: space-between;
     width: calc(100% - 80px);
-    padding: 20px;
     max-width: 1200px;
     margin: 20px auto;
+    padding: 20px;
 }
 
 #left-panel, #right-panel {
@@ -118,7 +118,7 @@ button:hover {
     margin: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: 48%;
+    width: calc(50% - 40px);  /* Account for margin */
     box-sizing: border-box;
 }
 
@@ -159,4 +159,5 @@ h2 {
         padding: 20px;
     }
 }
+
 
