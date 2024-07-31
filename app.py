@@ -42,6 +42,29 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
+@app.route('/check_saved_session', methods=['GET'])
+def check_saved_session():
+    saved_session = session.get('ig_session')
+    if saved_session:
+        profile_pic_url = session.get('profile_pic_url', '')
+        username = session.get('ig_username', '')
+        return jsonify({'has_saved_session': True, 'profile_pic_url': profile_pic_url, 'username': username})
+    return jsonify({'has_saved_session': False})
+
+@app.route('/continue_session', methods=['POST'])
+def continue_session():
+    global client, s3, bucket_name
+    saved_session = session.get('ig_session')
+    if not saved_session:
+        return jsonify({'status': 'No saved session available'}), 403
+    try:
+        client = Client()
+        client.set_settings(saved_session)
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored successfully'})
+    except Exception as e:
+        return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
+
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
@@ -83,7 +106,13 @@ def login():
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
-        
+        session['ig_session'] = client.get_settings()
+        session['ig_username'] = insta_username
+
+        # Fetch and save the profile picture URL
+        profile_info = client.user_info_by_username(insta_username)
+        session['profile_pic_url'] = profile_info.profile_pic_url
+
         # Configure AWS S3 client
         s3 = boto3.client('s3', 
             aws_access_key_id=aws_access_key, 
@@ -315,7 +344,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-
 def analyze_comments_with_openai(comments, unique_id):
     try:
         comment_texts = [comment[1] for comment in comments]
@@ -331,31 +359,6 @@ def analyze_comments_with_openai(comments, unique_id):
         # Example: write_to_s3([{'post_id': unique_id, 'summary': summary}], 'NOC_analysis.csv')
     except Exception as e:
         print(f"Error during AI analysis: {e} (App Version: {app_version})")
-
-@app.route('/check_saved_session', methods=['GET'])
-def check_saved_session():
-    if 'ig_session' in session:
-        ig_session = session['ig_session']
-        profile_pic_url = ig_session.get('profile_pic_url', '/static/default_profile.png')
-        return jsonify({
-            'session_exists': True,
-            'username': ig_session['username'],
-            'profile_pic_url': profile_pic_url
-        })
-    else:
-        return jsonify({'session_exists': False})
-
-@app.route('/continue_session', methods=['POST'])
-def continue_session():
-    global client
-    if 'ig_session' in session:
-        ig_session = session['ig_session']
-        client = Client()
-        client.set_settings(ig_session['settings'])
-        client.set_sessionid(ig_session['sessionid'])
-        session['logged_in'] = True
-        return jsonify({'status': 'Session restored', 'version': app_version})
-    return jsonify({'status': 'No session to restore', 'version': app_version}), 400
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
