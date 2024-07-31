@@ -12,6 +12,7 @@ from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
+import base64
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -48,7 +49,22 @@ def check_saved_session():
     if saved_session:
         profile_pic_url = session.get('profile_pic_url', '')
         username = session.get('ig_username', '')
-        return jsonify({'has_saved_session': True, 'profile_pic_url': profile_pic_url, 'username': username})
+        # Fetch the profile picture on the server side
+        if profile_pic_url:
+            try:
+                response = requests.get(profile_pic_url)
+                response.raise_for_status()
+                profile_pic_data = response.content
+                # Encode the image in base64
+                profile_pic_base64 = base64.b64encode(profile_pic_data).decode('utf-8')
+                return jsonify({
+                    'has_saved_session': True,
+                    'profile_pic_base64': profile_pic_base64,
+                    'username': username
+                })
+            except requests.RequestException as e:
+                print(f"Error fetching profile picture: {e}")
+                return jsonify({'has_saved_session': False})
     return jsonify({'has_saved_session': False})
 
 @app.route('/continue_session', methods=['POST'])
