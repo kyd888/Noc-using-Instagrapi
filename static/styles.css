@@ -128,6 +128,8 @@ button:hover {
     flex-direction: column;
     align-items: center;
     width: 100%; /* Ensure form takes the full width of the container */
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
 }
 
 h2 {
@@ -161,4 +163,5 @@ h2 {
         padding: 20px;
     }
 }
+
 
