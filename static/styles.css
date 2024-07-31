@@ -78,8 +78,8 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: 80%; /* Adjust width to match the button */
-    max-width: 400px; /* Ensure it doesn't take up the entire width */
+    width: calc(100% - 22px); /* Make input fields the same width as the buttons */
+    max-width: 400px;
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -87,8 +87,8 @@ input[type="password"] {
 }
 
 button {
-    width: 80%; /* Match the button width with the input width */
-    max-width: 400px; /* Ensure it doesn't take up the entire width */
+    width: calc(100% - 22px);
+    max-width: 400px;
     padding: 10px;
     border: 2px solid black; /* Black border */
     border-radius: 4px;
