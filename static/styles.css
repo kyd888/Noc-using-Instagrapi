@@ -128,6 +128,14 @@ button:hover {
     justify-content: center;
 }
 
+#left-panel {
+    margin-right: 20px;  /* Add space between the panels */
+}
+
+#right-panel {
+    margin-left: 20px;  /* Add space between the panels */
+}
+
 #monitor-form {
     width: 100%;
 }
@@ -163,4 +171,3 @@ h2 {
         padding: 20px;
     }
 }
-
