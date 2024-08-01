@@ -348,6 +348,11 @@ def scan_for_new_post(user_id, last_post_id, username):
         return latest_post, post_url, unique_id
     return None, None, None
 
+@app.route('/get_positive_usernames', methods=['GET'])
+def get_positive_usernames():
+    positive_usernames = session.get('positive_usernames', [])
+    return jsonify({'positive_usernames': positive_usernames})
+
 def analyze_comments_with_openai(comments, unique_id):
     try:
         positive_usernames = []
