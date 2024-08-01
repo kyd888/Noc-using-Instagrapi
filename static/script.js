@@ -91,6 +91,7 @@ $(document).ready(function() {
             setTimeout(function() {
                 $.get('/get_comments', function(data) {
                     updateCommentsQueue(data.comments);
+                    displayPositiveUsernames();
                 });
 
                 $.get('/get_post_urls', function(data) {
@@ -139,4 +140,15 @@ $(document).ready(function() {
             $('#comment-counter').text('');
         }
     }
+
+    function displayPositiveUsernames() {
+        $.get('/get_positive_usernames', function(data) {
+            if (data.positive_usernames && data.positive_usernames.length > 0) {
+                $('#positive-usernames').html('<h3>Positive Commenters:</h3><ul>' + data.positive_usernames.map(username => `<li>${username}</li>`).join('') + '</ul>');
+            } else {
+                $('#positive-usernames').html('<h3>No positive comments yet.</h3>');
+            }
+        });
+    }
 });
+
