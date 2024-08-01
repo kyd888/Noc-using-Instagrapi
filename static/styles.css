@@ -8,6 +8,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;  /* Ensure the body takes at least full viewport height */
+    box-sizing: border-box;
 }
 
 .logo-container {
@@ -106,7 +107,7 @@ button:hover {
 #main-content {
     display: flex;
     justify-content: space-between;
-    width: calc(100% - 80px);
+    width: 100%;
     max-width: 1200px;
     margin: 20px auto;
     padding: 20px;
