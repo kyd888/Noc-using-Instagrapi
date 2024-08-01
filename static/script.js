@@ -119,9 +119,7 @@ $(document).ready(function() {
         for (let username in commentsData) {
             const posts = commentsData[username];
             posts.forEach(post => {
-                post.comments.forEach(comment => {
-                    commentsQueue.push(comment);
-                });
+                commentsQueue.push(...post);
             });
         }
         if (commentsQueue.length > 0) {
@@ -142,4 +140,3 @@ $(document).ready(function() {
         }
     }
 });
-
