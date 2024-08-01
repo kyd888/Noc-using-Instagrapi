@@ -89,11 +89,6 @@ $(document).ready(function() {
     function checkStatus() {
         if (monitoring) {
             setTimeout(function() {
-                $.get('/get_comments', function(data) {
-                    updateCommentsQueue(data.comments);
-                    displayPositiveUsernames();
-                });
-
                 $.get('/get_post_urls', function(data) {
                     updateAccountPostsList(data.post_urls);
                     $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
@@ -113,42 +108,6 @@ $(document).ready(function() {
                 $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
             });
         }
-    }
-
-    function updateCommentsQueue(commentsData) {
-        commentsQueue = [];
-        for (let username in commentsData) {
-            const posts = commentsData[username];
-            posts.forEach(post => {
-                commentsQueue.push(...post);
-            });
-        }
-        if (commentsQueue.length > 0) {
-            displayNextComment();
-        }
-    }
-
-    function displayNextComment() {
-        if (commentsQueue.length > 0) {
-            const comment = commentsQueue[commentIndex];
-            $('#comment-text').text(`User: ${comment[0]} - Comment: ${comment[1]}`);
-            $('#comment-counter').text(`Comment ${commentIndex + 1} of ${commentsQueue.length}`);
-            commentIndex = (commentIndex + 1) % commentsQueue.length;
-            setTimeout(displayNextComment, 3000); // Cycle through comments every 3 seconds
-        } else {
-            $('#comment-text').text('No comments available.');
-            $('#comment-counter').text('');
-        }
-    }
-
-    function displayPositiveUsernames() {
-        $.get('/get_positive_usernames', function(data) {
-            if (data.positive_usernames && data.positive_usernames.length > 0) {
-                $('#positive-usernames').html('<h3>Positive Commenters:</h3><ul>' + data.positive_usernames.map(username => `<li>${username}</li>`).join('') + '</ul>');
-            } else {
-                $('#positive-usernames').html('<h3>No positive comments yet.</h3>');
-            }
-        });
     }
 });
 
