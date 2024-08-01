@@ -148,7 +148,7 @@ button:hover {
 #monitor-form label,
 #monitor-form input[type="text"],
 #monitor-form button {
-    width: 100%;
+    width: 90%;
     max-width: 100%;
     text-align: left;
 }
