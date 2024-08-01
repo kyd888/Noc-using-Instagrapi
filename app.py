@@ -348,6 +348,26 @@ def scan_for_new_post(user_id, last_post_id, username):
         return latest_post, post_url, unique_id
     return None, None, None
 
+def analyze_comments_with_openai(comments, unique_id):
+    try:
+        positive_usernames = []
+        for comment in comments:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=f"Analyze the sentiment of this comment: '{comment[1]}'. Is it positive, negative, or neutral?",
+                max_tokens=10
+            )
+            sentiment = response.choices[0].text.strip().lower()
+            if sentiment == "positive":
+                positive_usernames.append(comment[0])
+
+        print(f"Positive commenters for post {unique_id}: {positive_usernames} (App Version: {app_version})")
+        # Optionally, save the positive commenters to S3 or display it as needed
+        return positive_usernames
+    except Exception as e:
+        print(f"Error during AI analysis: {e} (App Version: {app_version})")
+        return []
+
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
@@ -361,25 +381,13 @@ def handle_new_post(username, post_url, unique_id, media_id):
         csv_data_global.extend(new_csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
         print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
-        analyze_comments_with_openai(new_comments, unique_id)
+
+        positive_usernames = analyze_comments_with_openai(new_comments, unique_id)
+        if positive_usernames:
+            session['positive_usernames'] = positive_usernames  # Store positive usernames in the session
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-def analyze_comments_with_openai(comments, unique_id):
-    try:
-        comment_texts = [comment[1] for comment in comments]
-        joined_comments = " ".join(comment_texts)
-        response = openai.Completion.create(
-            engine="davinci",
-            prompt=f"Analyze the following comments and summarize the main topics discussed:\n\n{joined_comments}",
-            max_tokens=150
-        )
-        summary = response.choices[0].text.strip()
-        print(f"AI Analysis for post {unique_id}: {summary} (App Version: {app_version})")
-        # Save the summary to S3 or display it as needed
-        # Example: write_to_s3([{'post_id': unique_id, 'summary': summary}], 'NOC_analysis.csv')
-    except Exception as e:
-        print(f"Error during AI analysis: {e} (App Version: {app_version})")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
