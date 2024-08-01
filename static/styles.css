@@ -158,9 +158,29 @@ h2 {
     color: #333;
 }
 
-#comment-text {
-    font-size: 1.2em;
+#comment-container {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
     margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+#comment-text {
+    display: inline-block;
+    padding-left: 100%;
+    animation: slide-left 15s linear infinite;
+}
+
+@keyframes slide-left {
+    0% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
 }
 
 #comment-counter {
