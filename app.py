@@ -195,11 +195,16 @@ def stop_monitoring():
     monitoring = {key: False for key in monitoring}
     return jsonify({'status': 'Monitoring stopped', 'version': app_version})
 
+
 @app.route('/get_comments', methods=['GET'])
 def get_comments_data():
     global comments_data
     print(f"Comments data being sent to front-end: {comments_data}")
-    return jsonify({'comments': comments_data, 'version': app_version})
+    formatted_comments = {}
+    for username, comments in comments_data.items():
+        formatted_comments[username] = [{'user': comment[0], 'text': comment[1], 'time': comment[2]} for comment in comments]
+    return jsonify({'comments': formatted_comments, 'version': app_version})
+
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
