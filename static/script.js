@@ -8,15 +8,12 @@ $(document).ready(function() {
     function checkSavedSession() {
         $.get('/check_saved_session', function(response) {
             if (response.has_saved_session) {
-                $('#profile-pic').attr('src', response.profile_pic_url);
+                if (response.profile_pic_base64) {
+                    $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
+                }
                 $('#profile-username').text(response.username);
                 $('#login-form').hide();
                 $('#continue-session-section').show();
-                $('#main-content').hide(); // Ensure main content is hidden
-            } else {
-                $('#continue-session-section').hide();
-                $('#login-form').show();
-                $('#main-content').hide(); // Ensure main content is hidden
             }
         });
     }
@@ -145,3 +142,4 @@ $(document).ready(function() {
         }
     }
 });
+
