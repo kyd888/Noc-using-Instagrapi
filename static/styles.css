@@ -7,7 +7,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;  /* Ensure the body takes at least full viewport height */
+    min-height: 100vh;
     box-sizing: border-box;
 }
 
@@ -18,7 +18,7 @@ body {
 }
 
 .logo {
-    width: 100px; /* Adjust size as needed */
+    width: 100px;
     height: auto;
 }
 
@@ -60,13 +60,13 @@ form, #continue-session-section {
 
 .no-border {
     border: none;
-    padding: 20px 0; /* Add padding to top and bottom */
+    padding: 20px 0;
 }
 
 .no-border legend {
     font-size: 1.5em;
     font-weight: bold;
-    text-align: center; /* Center the title */
+    text-align: center;
     width: 100%;
     margin-bottom: 10px;
 }
@@ -79,7 +79,7 @@ label {
 
 input[type="text"],
 input[type="password"] {
-    width: calc(100% - 22px); /* Make input fields the same width as the buttons */
+    width: calc(100% - 22px);
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
@@ -89,19 +89,19 @@ input[type="password"] {
 button {
     width: calc(100% - 22px);
     padding: 10px;
-    border: 2px solid black; /* Black border */
+    border: 2px solid black;
     border-radius: 4px;
-    background-color: black; /* Black background */
-    color: white; /* White text color */
+    background-color: black;
+    color: white;
     font-size: 16px;
     cursor: pointer;
-    transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effect */
-    margin: 5px 0; /* Adjust margin to ensure proper spacing */
+    transition: background-color 0.3s, color 0.3s;
+    margin: 5px 0;
 }
 
 button:hover {
-    background-color: white; /* White background on hover */
-    color: black; /* Black text on hover */
+    background-color: white;
+    color: black;
 }
 
 #main-content {
@@ -111,7 +111,7 @@ button:hover {
     max-width: 1200px;
     margin: 20px auto;
     padding: 20px;
-    box-sizing: border-box; /* Include padding in the width and height calculations */
+    box-sizing: border-box;
 }
 
 #left-panel, #right-panel {
@@ -120,7 +120,7 @@ button:hover {
     margin: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: calc(50% - 40px);  /* Account for margin */
+    width: calc(50% - 40px);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -129,7 +129,7 @@ button:hover {
 }
 
 #monitor-form {
-    width: 100%; /* Ensure form takes the full width of the container */
+    width: 100%;
 }
 
 h2 {
@@ -163,3 +163,4 @@ h2 {
         padding: 20px;
     }
 }
+
