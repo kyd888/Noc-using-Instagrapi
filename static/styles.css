@@ -138,10 +138,19 @@ button:hover {
 
 #monitor-form {
     width: 100%;
+    max-width: 400px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+}
+
+#monitor-form label,
+#monitor-form input[type="text"],
+#monitor-form button {
+    width: 100%;
+    max-width: 100%;
+    text-align: left;
 }
 
 h2 {
