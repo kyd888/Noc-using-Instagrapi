@@ -353,6 +353,24 @@ def get_positive_usernames():
     positive_usernames = session.get('positive_usernames', [])
     return jsonify({'positive_usernames': positive_usernames})
 
+def handle_new_post(username, post_url, unique_id, media_id):
+    global comments_data, csv_data_global
+    new_comments = get_comments(media_id, 10)  # Get 10 new comments
+    new_comments = [c for c in new_comments if c[0] != username]
+    if new_comments:
+        if username not in comments_data:
+            comments_data[username] = []
+        comments_data[username].extend(new_comments)  # Append new comments
+        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
+        new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
+        csv_data_global.extend(new_csv_data)
+        write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
+
+        analyze_comments_with_openai(new_comments, unique_id)
+    else:
+        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
 def analyze_comments_with_openai(comments, unique_id):
     try:
         positive_usernames = []
@@ -373,25 +391,6 @@ def analyze_comments_with_openai(comments, unique_id):
         print(f"Error during AI analysis: {e} (App Version: {app_version})")
         return []
 
-def handle_new_post(username, post_url, unique_id, media_id):
-    global comments_data, csv_data_global
-    new_comments = get_comments(media_id, 10)  # Get 10 new comments
-    new_comments = [c for c in new_comments if c[0] != username]
-    if new_comments:
-        if username not in comments_data:
-            comments_data[username] = []
-        comments_data[username].extend(new_comments)  # Append new comments
-        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
-        new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
-        csv_data_global.extend(new_csv_data)
-        write_to_s3(csv_data_global, 'NOC_data3.csv')
-        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
-
-        positive_usernames = analyze_comments_with_openai(new_comments, unique_id)
-        if positive_usernames:
-            session['positive_usernames'] = positive_usernames  # Store positive usernames in the session
-    else:
-        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 
 if __name__ == '__main__':
