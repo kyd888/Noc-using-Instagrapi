@@ -96,7 +96,7 @@ button {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s;
-    margin: 0px;
+    margin: 5px;
 }
 
 button:hover {
@@ -133,7 +133,7 @@ button:hover {
 }
 
 #right-panel {
-    margin-left: 20px;  /* Add space between the panels */
+    margin-left: 50px;  /* Add space between the panels */
 }
 
 #monitor-form {
