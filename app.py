@@ -10,7 +10,7 @@ import requests
 import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
-from instagrapi.exceptions import ClientError
+from instagrapi.exceptions import ClientError, JSONDecodeError
 import openai
 import base64
 from transformers import pipeline
@@ -198,6 +198,13 @@ def stop_monitoring():
     monitoring = {key: False for key in monitoring}
     return jsonify({'status': 'Monitoring stopped', 'version': app_version})
 
+@app.route('/get_post_urls', methods=['GET'])
+def get_post_urls():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 403
+    
+    return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': int(next_cycle_time - time.time())})
+
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
     for i in range(retries):
@@ -218,6 +225,10 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             print(f"JSON decode error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
+        except JSONDecodeError as e:
+            print(f"JSONDecodeError: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
+            time.sleep(delay + random.uniform(0, delay / 2))
+            delay *= 2
         except Exception as e:
             print(f"Unexpected error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
@@ -244,6 +255,9 @@ def get_latest_post(user_id):
         else:
             print("No posts found. (App Version: {app_version})")
         return posts[0] if posts else None
+    except JSONDecodeError as e:
+        print(f"JSONDecodeError: {e} (App Version: {app_version})")
+        return None
     except Exception as e:
         print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
         return None
