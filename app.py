@@ -13,6 +13,9 @@ from botocore.exceptions import NoCredentialsError, ClientError as BotoClientErr
 from instagrapi.exceptions import ClientError
 import openai
 import base64
+from transformers import pipeline
+from PIL import Image
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -38,6 +41,11 @@ next_cycle_time = None  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
+
+# Initialize Transformers pipelines
+text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+image_classifier = pipeline('image-classification')
+candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
 @app.route('/')
 def index():
@@ -361,6 +369,84 @@ def analyze_comments_with_openai(comments, unique_id):
     except Exception as e:
         print(f"Error during AI analysis: {e} (App Version: {app_version})")
         return []
+
+def fetch_instagram_profile(username, cl):
+    try:
+        user_info = cl.user_info_by_username(username)
+        user_id = user_info.pk
+
+        profile_data = {
+            'username': user_info.username,
+            'full_name': user_info.full_name,
+            'biography': user_info.biography,
+            'media_count': user_info.media_count,
+            'follower_count': user_info.follower_count,
+            'following_count': user_info.following_count,
+            'posts': []
+        }
+
+        medias = cl.user_medias(user_id, 10)  # Fetch latest 10 posts
+        for media in medias:
+            try:
+                media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
+            except (IndexError, AttributeError) as e:
+                print(f"Error processing media post: {e}")
+                continue  # Skip this media post if there's an error
+
+            post = {
+                'id': media.pk,
+                'caption': media.caption_text,
+                'media_type': media.media_type,
+                'media_url': str(media_url),
+                'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
+                'likes': media.like_count,
+                'comments': media.comment_count
+            }
+            profile_data['posts'].append(post)
+
+        return profile_data
+    except Exception as e:
+        print(f"An error occurred while fetching data for {username}: {e}")
+        return None
+
+def analyze_interests(captions, images):
+    interests = {label: 0 for label in candidate_labels}
+
+    for caption in captions:
+        if not caption:
+            continue
+        result = text_classifier(caption, candidate_labels)
+        for label, score in zip(result['labels'], result['scores']):
+            interests[label] += score
+
+    for image_url in images:
+        response = requests.get(image_url)
+        img = Image.open(BytesIO(response.content))
+        result = image_classifier(img)
+        for res in result:
+            if res['label'] in candidate_labels:
+                interests[res['label']] += res['score']
+
+    # Sort interests by score
+    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    return sorted_interests[:3]
+
+@app.route('/get_post_urls', methods=['GET'])
+def get_post_urls():
+    result = {'post_urls': post_urls, 'seconds_until_next_cycle': max(0, int(next_cycle_time - time.time()))}
+    return jsonify(result)
+
+@app.route('/get_commenter_interests', methods=['POST'])
+def get_commenter_interests():
+    commenter = request.json.get('commenter')
+    profile_data = fetch_instagram_profile(commenter, client)
+    if profile_data:
+        captions = [post['caption'] for post in profile_data['posts']]
+        images = [post['media_url'] for post in profile_data['posts']]
+        interests = analyze_interests(captions, images)
+        return jsonify({'interests': interests})
+    else:
+        return jsonify({'error': 'Failed to fetch data'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
