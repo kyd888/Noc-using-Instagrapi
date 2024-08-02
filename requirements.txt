@@ -10,6 +10,6 @@ pandas==1.5.2
 Pillow>=8.1.1
 openai==0.27.0
 Werkzeug==2.2.2
-transformers==4.11.3  # Older version of transformers
+transformers==2.4.1
 torch==2.1.0
 huggingface-hub==0.0.17
