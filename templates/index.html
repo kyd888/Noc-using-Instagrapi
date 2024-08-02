@@ -37,9 +37,17 @@
             </form>
         </div>
         <div id="right-panel">
-            <h2>Account Posts</h2>
-            <div id="account-posts-list"></div>
+            <h2>Commenters and Interests</h2>
+            <div id="account-posts-list">
+                {% for user, data in post_urls.items() %}
+                    <h3>{{ user }}</h3>
+                    {% for entry in data %}
+                        <p>{{ entry.commenter }}: {{ entry.interests }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
         </div>
     </div>
 </body>
 </html>
+
