@@ -10,12 +10,13 @@ import requests
 import boto3
 from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
-from instagrapi.exceptions import ClientError, JSONDecodeError
+from instagrapi.exceptions import ClientError
 import openai
 import base64
 from transformers import pipeline
 from datetime import datetime
 from PIL import Image
+from json import JSONDecodeError
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
