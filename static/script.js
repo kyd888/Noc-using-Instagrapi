@@ -104,8 +104,20 @@ $(document).ready(function() {
             const posts = data[username];
             posts.forEach(post => {
                 $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
+                fetchCommenterInterests(post.url);
             });
         }
     }
-});
 
+    function fetchCommenterInterests(postUrl) {
+        $.get(postUrl, function(postData) {
+            const comments = postData.comments;
+            comments.forEach(comment => {
+                $.post('/get_commenter_interests', { commenter: comment.username }, function(response) {
+                    const interests = response.interests;
+                    $('#account-posts-list').append(`<p>Commenter: ${comment.username}, Interests: ${interests.map(i => i[0]).join(', ')}</p>`);
+                });
+            });
+        });
+    }
+});
