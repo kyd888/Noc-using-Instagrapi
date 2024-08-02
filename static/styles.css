@@ -22,12 +22,6 @@ body {
     height: auto;
 }
 
-h1 {
-    text-align: center;
-    color: #4CAF50;
-    margin-top: 20px;
-}
-
 form, #continue-session-section {
     background: #fff;
     padding: 50px;
@@ -156,17 +150,6 @@ button:hover {
 h2 {
     text-align: center;
     color: #333;
-}
-
-#comment-text {
-    font-size: 1.2em;
-    margin-top: 20px;
-}
-
-#comment-counter {
-    text-align: center;
-    font-size: 1.2em;
-    margin-top: 10px;
 }
 
 @media (max-width: 768px) {
