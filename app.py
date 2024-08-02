@@ -195,30 +195,6 @@ def stop_monitoring():
     monitoring = {key: False for key in monitoring}
     return jsonify({'status': 'Monitoring stopped', 'version': app_version})
 
-
-@app.route('/get_comments', methods=['GET'])
-def get_comments_data():
-    global comments_data
-    print(f"Comments data being sent to front-end: {comments_data}")
-    formatted_comments = {}
-    for username, comments in comments_data.items():
-        formatted_comments[username] = [{'user': comment[0], 'text': comment[1], 'time': comment[2]} for comment in comments]
-    return jsonify({'comments': formatted_comments, 'version': app_version})
-
-
-@app.route('/get_post_urls', methods=['GET'])
-def get_post_urls():
-    global next_cycle_time
-    current_time = time.time()
-    seconds_until_next_cycle = max(0, int(next_cycle_time - current_time)) if next_cycle_time else 0
-    return jsonify({
-        'post_urls': post_urls, 
-        'last_refresh_time': last_refresh_time, 
-        'refresh_messages': {user: msgs[0] if msgs else '' for user, msgs in refresh_messages.items()},  # Get the latest message per user
-        'seconds_until_next_cycle': seconds_until_next_cycle,
-        'version': app_version
-    })
-
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
     for i in range(retries):
@@ -348,11 +324,6 @@ def scan_for_new_post(user_id, last_post_id, username):
         return latest_post, post_url, unique_id
     return None, None, None
 
-@app.route('/get_positive_usernames', methods=['GET'])
-def get_positive_usernames():
-    positive_usernames = session.get('positive_usernames', [])
-    return jsonify({'positive_usernames': positive_usernames})
-
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
@@ -390,8 +361,6 @@ def analyze_comments_with_openai(comments, unique_id):
     except Exception as e:
         print(f"Error during AI analysis: {e} (App Version: {app_version})")
         return []
-
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
