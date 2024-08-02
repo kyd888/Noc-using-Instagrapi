@@ -15,7 +15,7 @@ import openai
 import base64
 from transformers import pipeline
 from PIL import Image
-from datetime import datetime
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -42,10 +42,9 @@ next_cycle_time = None  # Initialize next_cycle_time
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
-# Initialize Transformers pipelines
+# Initialize NLP and image classification models
 text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
 image_classifier = pipeline('image-classification')
-candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
 @app.route('/')
 def index():
@@ -410,6 +409,8 @@ def fetch_instagram_profile(username, cl):
         return None
 
 def analyze_interests(captions, images):
+    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
+
     interests = {label: 0 for label in candidate_labels}
 
     for caption in captions:
@@ -429,25 +430,29 @@ def analyze_interests(captions, images):
 
     # Sort interests by score
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
-    return sorted_interests[:3]
+    return sorted_interests
 
-@app.route('/get_post_urls', methods=['GET'])
-def get_post_urls():
-    result = {'post_urls': post_urls, 'seconds_until_next_cycle': max(0, int(next_cycle_time - time.time()))}
-    return jsonify(result)
+@app.route('/fetch_profile_data', methods=['POST'])
+def fetch_profile_data():
+    if not session.get('logged_in'):
+        return jsonify({'status': 'Please login first', 'version': app_version}), 403
 
-@app.route('/get_commenter_interests', methods=['POST'])
-def get_commenter_interests():
-    commenter = request.json.get('commenter')
-    profile_data = fetch_instagram_profile(commenter, client)
+    target_username = request.form.get('target_username')
+    if not target_username:
+        return jsonify({'status': 'No target username provided', 'version': app_version}), 400
+
+    profile_data = fetch_instagram_profile(target_username, client)
     if profile_data:
         captions = [post['caption'] for post in profile_data['posts']]
         images = [post['media_url'] for post in profile_data['posts']]
         interests = analyze_interests(captions, images)
-        return jsonify({'interests': interests})
+        profile_data['interests'] = interests
+
+        return jsonify({'status': 'Profile fetched successfully', 'profile_data': profile_data, 'version': app_version})
     else:
-        return jsonify({'error': 'Failed to fetch data'}), 500
+        return jsonify({'status': f'Failed to fetch data for {target_username}', 'version': app_version})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
+
