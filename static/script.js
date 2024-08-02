@@ -1,7 +1,5 @@
 $(document).ready(function() {
     let monitoring = false;
-    let commentsQueue = [];
-    let commentIndex = 0;
 
     checkSavedSession();
 
