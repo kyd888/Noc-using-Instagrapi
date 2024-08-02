@@ -14,8 +14,8 @@ from instagrapi.exceptions import ClientError
 import openai
 import base64
 from transformers import pipeline
+from datetime import datetime
 from PIL import Image
-from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -41,10 +41,6 @@ next_cycle_time = None  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
-
-# Initialize NLP and image classification models
-text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-image_classifier = pipeline('image-classification')
 
 @app.route('/')
 def index():
@@ -345,33 +341,51 @@ def handle_new_post(username, post_url, unique_id, media_id):
         write_to_s3(csv_data_global, 'NOC_data3.csv')
         print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
 
-        analyze_comments_with_openai(new_comments, unique_id)
+        for comment in new_comments:
+            commenter_username = comment[0]
+            profile_data = fetch_instagram_profile(commenter_username)
+            if profile_data:
+                captions = [post['caption'] for post in profile_data['posts']]
+                images = [post['media_url'] for post in profile_data['posts']]
+                interests = analyze_interests(captions, images)
+                profile_data['interests'] = interests
+
+                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                # Optionally, you can store the interests data to S3 or display it as needed
+            else:
+                print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-def analyze_comments_with_openai(comments, unique_id):
-    try:
-        positive_usernames = []
-        for comment in comments:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt=f"Analyze the sentiment of this comment: '{comment[1]}'. Is it positive, negative, or neutral?",
-                max_tokens=10
-            )
-            sentiment = response.choices[0].text.strip().lower()
-            if sentiment == "positive":
-                positive_usernames.append(comment[0])
+def analyze_interests(captions, images):
+    text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    image_classifier = pipeline('image-classification')
 
-        print(f"Positive commenters for post {unique_id}: {positive_usernames} (App Version: {app_version})")
-        # Optionally, save the positive commenters to S3 or display it as needed
-        return positive_usernames
-    except Exception as e:
-        print(f"Error during AI analysis: {e} (App Version: {app_version})")
-        return []
+    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
-def fetch_instagram_profile(username, cl):
+    interests = {label: 0 for label in candidate_labels}
+
+    for caption in captions:
+        if not caption:
+            continue
+        result = text_classifier(caption, candidate_labels)
+        for label, score in zip(result['labels'], result['scores']):
+            interests[label] += score
+
+    for image_url in images:
+        response = requests.get(image_url)
+        img = Image.open(BytesIO(response.content))
+        result = image_classifier(img)
+        for res in result:
+            if res['label'] in candidate_labels:
+                interests[res['label']] += res['score']
+
+    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    return sorted_interests
+
+def fetch_instagram_profile(username):
     try:
-        user_info = cl.user_info_by_username(username)
+        user_info = client.user_info_by_username(username)
         user_id = user_info.pk
 
         profile_data = {
@@ -384,7 +398,7 @@ def fetch_instagram_profile(username, cl):
             'posts': []
         }
 
-        medias = cl.user_medias(user_id, 10)  # Fetch latest 10 posts
+        medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
         for media in medias:
             try:
                 media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
@@ -408,51 +422,6 @@ def fetch_instagram_profile(username, cl):
         print(f"An error occurred while fetching data for {username}: {e}")
         return None
 
-def analyze_interests(captions, images):
-    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
-
-    interests = {label: 0 for label in candidate_labels}
-
-    for caption in captions:
-        if not caption:
-            continue
-        result = text_classifier(caption, candidate_labels)
-        for label, score in zip(result['labels'], result['scores']):
-            interests[label] += score
-
-    for image_url in images:
-        response = requests.get(image_url)
-        img = Image.open(BytesIO(response.content))
-        result = image_classifier(img)
-        for res in result:
-            if res['label'] in candidate_labels:
-                interests[res['label']] += res['score']
-
-    # Sort interests by score
-    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
-    return sorted_interests
-
-@app.route('/fetch_profile_data', methods=['POST'])
-def fetch_profile_data():
-    if not session.get('logged_in'):
-        return jsonify({'status': 'Please login first', 'version': app_version}), 403
-
-    target_username = request.form.get('target_username')
-    if not target_username:
-        return jsonify({'status': 'No target username provided', 'version': app_version}), 400
-
-    profile_data = fetch_instagram_profile(target_username, client)
-    if profile_data:
-        captions = [post['caption'] for post in profile_data['posts']]
-        images = [post['media_url'] for post in profile_data['posts']]
-        interests = analyze_interests(captions, images)
-        profile_data['interests'] = interests
-
-        return jsonify({'status': 'Profile fetched successfully', 'profile_data': profile_data, 'version': app_version})
-    else:
-        return jsonify({'status': f'Failed to fetch data for {target_username}', 'version': app_version})
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
-
