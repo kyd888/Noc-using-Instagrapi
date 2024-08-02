@@ -104,20 +104,35 @@ $(document).ready(function() {
             const posts = data[username];
             posts.forEach(post => {
                 $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-                fetchCommenterInterests(post.url);
             });
         }
     }
 
-    function fetchCommenterInterests(postUrl) {
-        $.get(postUrl, function(postData) {
-            const comments = postData.comments;
-            comments.forEach(comment => {
-                $.post('/get_commenter_interests', { commenter: comment.username }, function(response) {
-                    const interests = response.interests;
-                    $('#account-posts-list').append(`<p>Commenter: ${comment.username}, Interests: ${interests.map(i => i[0]).join(', ')}</p>`);
-                });
+    $('#fetch-profile-form').submit(function(event) {
+        event.preventDefault();
+        const targetUsername = $('#target_username').val().trim();
+        if (targetUsername) {
+            $.post('/fetch_profile_data', { target_username: targetUsername }, function(response) {
+                if (response.status === 'Profile fetched successfully') {
+                    displayProfileData(response.profile_data);
+                } else {
+                    alert(response.status);
+                }
             });
-        });
+        }
+    });
+
+    function displayProfileData(profileData) {
+        $('#profile-result').empty().append(`
+            <h3>Profile: ${profileData.username}</h3>
+            <p>Full Name: ${profileData.full_name}</p>
+            <p>Biography: ${profileData.biography}</p>
+            <p>Followers: ${profileData.follower_count}</p>
+            <p>Following: ${profileData.following_count}</p>
+            <h4>Top Interests:</h4>
+            <ul id="interests-list">
+                ${profileData.interests.slice(0, 3).map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}
+            </ul>
+        `);
     }
 });
