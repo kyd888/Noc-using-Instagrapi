@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim
+FROM python:3.8-slim
 
 # Set the working directory in the container
 WORKDIR /app
@@ -11,9 +11,10 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     python3-dev \
     rustc \
-    cargo
+    cargo \
+    && apt-get clean
 
-# Install pip and dependencies
+# Upgrade pip and setuptools
 RUN pip install --upgrade pip setuptools
 
 # Copy the requirements file into the container
