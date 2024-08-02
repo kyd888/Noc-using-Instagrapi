@@ -10,9 +10,14 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libffi-dev \
     python3-dev \
-    rustc \
-    cargo \
+    curl \
     && apt-get clean
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# Ensure the cargo binary path is added to the environment
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Upgrade pip and setuptools
 RUN pip install --upgrade pip setuptools
