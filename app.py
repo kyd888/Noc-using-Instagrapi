@@ -13,7 +13,7 @@ from botocore.exceptions import NoCredentialsError, ClientError as BotoClientErr
 from instagrapi.exceptions import ClientError
 import openai
 import base64
-from transformers import pipeline, AutoTokenizer
+from transformers import pipeline
 from PIL import Image
 from datetime import datetime
 
