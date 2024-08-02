@@ -347,7 +347,7 @@ def scan_for_new_post(user_id, last_post_id, username):
     return None, None, None
 
 def handle_new_post(username, post_url, unique_id, media_id):
-    global comments_data, csv_data_global
+    global comments_data, csv_data_global, post_urls
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
@@ -369,12 +369,20 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 interests = analyze_interests(captions, images)
                 profile_data['interests'] = interests
 
+                # Store username and interests in post_urls
+                if username not in post_urls:
+                    post_urls[username] = []
+                post_urls[username].append({
+                    'commenter': commenter_username,
+                    'interests': interests
+                })
+
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-                # Optionally, you can store the interests data to S3 or display it as needed
             else:
                 print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
 
 def analyze_interests(captions, images):
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli', force_download=True)
