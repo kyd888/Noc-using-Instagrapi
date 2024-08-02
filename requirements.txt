@@ -7,6 +7,6 @@ numpy==1.23.5
 pandas==1.5.2
 Pillow>=8.1.1
 openai==0.27.0
-transformers==4.11.3
-torch==1.13.1
 Werkzeug==2.2.2
+transformers==4.18.0
+torch==1.10.2
