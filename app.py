@@ -84,6 +84,7 @@ def continue_session():
     try:
         client = Client()
         client.set_settings(saved_session)
+        client.login_by_sessionid(client.sessionid)
         session['logged_in'] = True
         return jsonify({'status': 'Session restored successfully'})
     except Exception as e:
