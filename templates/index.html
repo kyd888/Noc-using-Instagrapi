@@ -39,12 +39,16 @@
         <div id="right-panel">
             <h2>Commenters and Interests</h2>
             <div id="account-posts-list">
-                {% for user, data in post_urls.items() %}
-                    <h3>{{ user }}</h3>
-                    {% for entry in data %}
-                        <p>{{ entry.commenter }}: {{ entry.interests }}</p>
+                {% if post_urls %}
+                    {% for user, data in post_urls.items() %}
+                        <h3>{{ user }}</h3>
+                        {% for post in data %}
+                            <p>{{ post.commenter }}: {{ post.interests }}</p>
+                        {% endfor %}
                     {% endfor %}
-                {% endfor %}
+                {% else %}
+                    <p>No data available</p>
+                {% endif %}
             </div>
         </div>
     </div>
