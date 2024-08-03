@@ -376,9 +376,9 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 profile_data['interests'] = interests
 
                 # Store username and interests in post_urls
-                if username not in post_urls:
-                    post_urls[username] = []
-                post_urls[username].append({
+                if commenter_username not in post_urls:
+                    post_urls[commenter_username] = []
+                post_urls[commenter_username].append({
                     'commenter': commenter_username,
                     'interests': interests
                 })
