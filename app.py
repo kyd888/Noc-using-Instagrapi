@@ -33,7 +33,7 @@ s3 = None  # Store the S3 client
 bucket_name = None
 monitoring = {}
 comments_data = {}
-post_urls = {}
+post_urls = {}  # Initialize post_urls
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
@@ -49,7 +49,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global, post_urls=post_urls)
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -382,7 +382,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
-
 
 def analyze_interests(captions, images):
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli', force_download=True)
