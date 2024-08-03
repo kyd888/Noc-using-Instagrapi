@@ -232,6 +232,7 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
         except JSONDecodeError as e:
+            log_full_response(func)
             print(f"JSONDecodeError: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))
             delay *= 2
@@ -262,7 +263,11 @@ def get_latest_post(user_id):
             print("No posts found. (App Version: {app_version})")
         return posts[0] if posts else None
     except JSONDecodeError as e:
+        log_full_response(f"https://www.instagram.com/{user_id}/?__a=1&__d=dis")
         print(f"JSONDecodeError: {e} (App Version: {app_version})")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"RequestException: {e} (App Version: {app_version})")
         return None
     except Exception as e:
         print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
@@ -448,6 +453,14 @@ def fetch_instagram_profile(username):
     except Exception as e:
         print(f"An error occurred while fetching data for {username}: {e}")
         return None
+
+def log_full_response(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        print(f"Full response from {url}: {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"RequestException while fetching {url}: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
