@@ -149,7 +149,7 @@ def login():
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
 
-def login_with_retries(client, username, password, retries=5, initial_delay=60):
+def login_with_retries(client, username, password, retries=5, initial_delay=10):
     delay = initial_delay
     for i in range(retries):
         try:
