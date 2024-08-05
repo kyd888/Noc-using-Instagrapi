@@ -37,18 +37,16 @@
             </form>
         </div>
         <div id="right-panel">
-            <h2>Commenters and Interests</h2>
-            <div id="account-posts-list">
-                {% if post_urls %}
-                    {% for user, data in post_urls.items() %}
-                        <h3>{{ user }}</h3>
-                        {% for post in data %}
-                            <p>{{ post.commenter }}: {{ post.interests }}</p>
+            <h2>Commenters and Their Interests</h2>
+            <div id="commenters-interests-list">
+                {% for commenter, interests in commenters_interests.items() %}
+                    <h3>{{ commenter }}</h3>
+                    <ul>
+                        {% for interest in interests %}
+                            <li>{{ interest[0] }}: {{ interest[1] }}</li>
                         {% endfor %}
-                    {% endfor %}
-                {% else %}
-                    <p>No data available</p>
-                {% endif %}
+                    </ul>
+                {% endfor %}
             </div>
         </div>
     </div>
