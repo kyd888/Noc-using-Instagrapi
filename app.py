@@ -18,10 +18,6 @@ from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
 
-# Suppress the FutureWarning
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning, module="huggingface_hub.file_download")
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
