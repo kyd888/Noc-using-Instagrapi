@@ -262,9 +262,10 @@ def get_latest_post(user_id):
         posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
         if posts:
             print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
+            return posts[0]
         else:
-            print("No posts found. (App Version: {app_version})")
-        return posts[0] if posts else None
+            print("No posts found or user is private. (App Version: {app_version})")
+            return None
     except JSONDecodeError as e:
         log_full_response(f"https://www.instagram.com/{user_id}/?__a=1&__d=dis")
         print(f"JSONDecodeError: {e} (App Version: {app_version})")
@@ -427,6 +428,10 @@ def fetch_instagram_profile(username):
         }
 
         medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
+        if not medias:
+            print(f"No posts found for user {username} or user is private. (App Version: {app_version})")
+            return None
+        
         for media in medias:
             try:
                 media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
