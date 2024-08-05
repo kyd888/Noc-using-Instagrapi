@@ -10,4 +10,4 @@ openai==0.27.0
 Werkzeug==2.2.2
 transformers==4.11.3
 torch==2.0.1
-tokenizers==0.10.1  # Use a version known to have pre-built wheels
+tokenizers==0.10.1
