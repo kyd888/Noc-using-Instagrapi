@@ -208,8 +208,11 @@ def stop_monitoring():
 def get_post_urls():
     if not session.get('logged_in'):
         return jsonify({'error': 'Not logged in'}), 403
+
+    # Ensure next_cycle_time is not None
+    time_until_next_cycle = int(next_cycle_time - time.time()) if next_cycle_time else 'N/A'
     
-    return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': int(next_cycle_time - time.time())})
+    return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': time_until_next_cycle})
 
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
