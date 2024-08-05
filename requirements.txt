@@ -8,5 +8,5 @@ pandas==1.5.2
 Pillow>=8.1.1
 openai==0.27.0
 Werkzeug==2.2.2
-transformers==4.20.1
-tensorflow-cpu==2.13.0  # Use tensorflow-cpu to avoid potential issues with GPU drivers
+transformers==4.6.1
+torch==1.8.1+cpu
