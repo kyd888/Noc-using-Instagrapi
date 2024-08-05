@@ -372,7 +372,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
             if profile_data:
-                if len(profile_data['posts']) < 10:  # Check if the profile has less than 10 posts
+                if len(profile_data['posts']) < 5:  # Check if the profile has less than 5 posts
                     print(f"Skipping {commenter_username} due to insufficient posts for analysis. (App Version: {app_version})")
                     continue
 
@@ -467,6 +467,6 @@ def log_full_response(url):
     except requests.exceptions.RequestException as e:
         print(f"RequestException while fetching {url}: {e}")
 
-if __name__ == '__main__':
+if __name__ == '__<|audio_sentinel|>__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
