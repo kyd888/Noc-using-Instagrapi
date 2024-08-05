@@ -205,8 +205,8 @@ def get_post_urls():
     if not session.get('logged_in'):
         return jsonify({'error': 'Not logged in'}), 403
 
-    # Ensure next_cycle_time is not None
-    time_until_next_cycle = int(next_cycle_time - time.time()) if next_cycle_time else 'N/A'
+    # Ensure next_cycle_time is defined before calculating the time until next cycle
+    time_until_next_cycle = max(0, int(next_cycle_time - time.time())) if next_cycle_time else "Unknown"
     
     return jsonify({'commenters_interests': commenters_interests, 'seconds_until_next_cycle': time_until_next_cycle})
 
