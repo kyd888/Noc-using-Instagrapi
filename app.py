@@ -372,6 +372,10 @@ def handle_new_post(username, post_url, unique_id, media_id):
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
             if profile_data:
+                if len(profile_data['posts']) < 10:  # Check if the profile has less than 10 posts
+                    print(f"Skipping {commenter_username} due to insufficient posts for analysis. (App Version: {app_version})")
+                    continue
+
                 captions = [post['caption'] for post in profile_data['posts']]
                 images = [post['media_url'] for post in profile_data['posts']]
                 interests = analyze_interests(captions, images)
