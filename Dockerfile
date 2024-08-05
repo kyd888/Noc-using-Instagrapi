@@ -1,12 +1,17 @@
+# Use the official Python image from the Docker Hub
 FROM python:3.9-slim
 
+# Set the working directory inside the container
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+# Copy the current directory contents into the container at /app
+COPY . /app
 
-RUN pip install --upgrade pip
-RUN pip install --use-deprecated=legacy-resolver -r requirements.txt
+# Install any necessary dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
 
+# Run app.py when the container launches
 CMD ["python", "app.py"]
