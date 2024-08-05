@@ -387,8 +387,8 @@ def handle_new_post(username, post_url, unique_id, media_id):
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
-    text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli', force_download=True)
-    image_classifier = pipeline('image-classification', force_download=True)
+    text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    image_classifier = pipeline('image-classification')
 
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
