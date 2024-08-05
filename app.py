@@ -33,7 +33,7 @@ s3 = None  # Store the S3 client
 bucket_name = None
 monitoring = {}
 comments_data = {}
-post_urls = {}  # Initialize post_urls
+commenters_interests = {}  # Store commenters' interests here
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
@@ -49,7 +49,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, post_urls=post_urls)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -189,11 +189,11 @@ def start_monitoring():
     return jsonify({'status': 'Monitoring started', 'version': app_version})
 
 def start_monitoring_for_user(user_id, username):
-    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
+    global monitoring, commenters_interests, last_refresh_time, refresh_messages, comments_data
     monitoring[username] = True
     refresh_messages[username] = []
     comments_data[username] = []
-    post_urls[username] = []
+    commenters_interests[username] = []
     last_refresh_time[username] = None
     thread = Thread(target=post_monitoring_loop, args=(user_id, username))
     thread.start()
@@ -212,7 +212,7 @@ def get_post_urls():
     # Ensure next_cycle_time is not None
     time_until_next_cycle = int(next_cycle_time - time.time()) if next_cycle_time else 'N/A'
     
-    return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': time_until_next_cycle})
+    return jsonify({'commenters_interests': commenters_interests, 'seconds_until_next_cycle': time_until_next_cycle})
 
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
@@ -350,13 +350,11 @@ def scan_for_new_post(user_id, last_post_id, username):
     if (latest_post and latest_post.pk != last_post_id):
         post_url = f"https://www.instagram.com/p/{latest_post.code}/"
         unique_id = str(uuid.uuid4().int)[:4]
-        post_urls[username].append({'url': post_url, 'id': unique_id})
-        print(f"Found new post: {post_url} (App Version: {app_version})")
         return latest_post, post_url, unique_id
     return None, None, None
 
 def handle_new_post(username, post_url, unique_id, media_id):
-    global comments_data, csv_data_global, post_urls
+    global comments_data, csv_data_global, commenters_interests
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
@@ -378,13 +376,10 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 interests = analyze_interests(captions, images)
                 profile_data['interests'] = interests
 
-                # Store username and interests in post_urls
-                if commenter_username not in post_urls:
-                    post_urls[commenter_username] = []
-                post_urls[commenter_username].append({
-                    'commenter': commenter_username,
-                    'interests': interests
-                })
+                # Store username and interests in commenters_interests
+                if commenter_username not in commenters_interests:
+                    commenters_interests[commenter_username] = []
+                commenters_interests[commenter_username].append(interests)
 
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
             else:
