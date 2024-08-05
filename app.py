@@ -377,9 +377,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 profile_data['interests'] = interests
 
                 # Store username and interests in commenters_interests
-                if commenter_username not in commenters_interests:
-                    commenters_interests[commenter_username] = []
-                commenters_interests[commenter_username].append(interests)
+                commenters_interests[commenter_username] = interests
 
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
             else:
