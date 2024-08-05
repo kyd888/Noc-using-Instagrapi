@@ -467,6 +467,6 @@ def log_full_response(url):
     except requests.exceptions.RequestException as e:
         print(f"RequestException while fetching {url}: {e}")
 
-if __name__ == '__<|audio_sentinel|>__':
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
