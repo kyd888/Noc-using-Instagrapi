@@ -368,6 +368,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
                 captions = [post['caption'] for post in profile_data['posts']]
                 images = [post['media_url'] for post in profile_data['posts']]
+                print(f"Analyzing interests for commenter: {commenter_username}")
                 interests = analyze_interests(captions, images)
                 profile_data['interests'] = interests
 
@@ -381,6 +382,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
+    print("Starting interest analysis...")
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
     image_classifier = pipeline('image-classification')
 
@@ -388,22 +390,30 @@ def analyze_interests(captions, images):
 
     interests = {label: 0 for label in candidate_labels}
 
+    print("Analyzing captions...")
     for caption in captions:
         if not caption:
             continue
+        print(f"Classifying caption: {caption}")
         result = text_classifier(caption, candidate_labels)
         for label, score in zip(result['labels'], result['scores']):
             interests[label] += score
 
+    print("Analyzing images...")
     for image_url in images:
-        response = requests.get(image_url)
-        img = Image.open(BytesIO(response.content))
-        result = image_classifier(img)
-        for res in result:
-            if res['label'] in candidate_labels:
-                interests[res['label']] += res['score']
+        try:
+            print(f"Fetching image from URL: {image_url}")
+            response = requests.get(image_url)
+            img = Image.open(BytesIO(response.content))
+            result = image_classifier(img)
+            for res in result:
+                if res['label'] in candidate_labels:
+                    interests[res['label']] += res['score']
+        except Exception as e:
+            print(f"Error analyzing image: {e}")
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    print(f"Interests analysis result: {sorted_interests}")
     return sorted_interests
 
 def fetch_instagram_profile(username):
