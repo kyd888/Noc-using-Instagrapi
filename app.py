@@ -8,7 +8,6 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
@@ -16,6 +15,7 @@ import base64
 from transformers import pipeline
 from datetime import datetime
 from PIL import Image
+from io import BytesIO, StringIO
 from json import JSONDecodeError
 
 app = Flask(__name__)
@@ -92,14 +92,8 @@ def login():
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
     
-    # Read AWS access key from secret file
-    with open('/etc/secrets/aws_access_key.txt', 'r') as file:
-        aws_access_key = file.read().strip()
-    
-    # Read AWS secret key from secret file
-    with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
-        aws_secret_key = file.read().strip()
-    
+    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
     aws_region = 'us-east-1'
     bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
     
