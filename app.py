@@ -378,7 +378,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
 def analyze_interests(captions, images):
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-    image_classifier = pipeline('image-classification', model="google/vit-base-patch16-224")
+    image_classifier = pipeline('image-classification')
 
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
@@ -398,7 +398,7 @@ def analyze_interests(captions, images):
                 if res['label'] in candidate_labels:
                     interests[res['label']] += res['score']
         except Exception as e:
-            print(f"Error analyzing image {image_url}: {e}")
+            print(f"Error analyzing image: {e} (App Version: {app_version})")
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
