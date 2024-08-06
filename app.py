@@ -1,71 +1,228 @@
 import os
 import time
 import random
-import json
 import uuid
-import boto3
 import pandas as pd
-from io import StringIO
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 from instagrapi import Client
-from instagrapi.exceptions import JSONDecodeError
+from threading import Thread
+import requests
+import boto3
+from io import StringIO, BytesIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
+from instagrapi.exceptions import ClientError
+import openai
+import base64
 from transformers import pipeline
+from datetime import datetime
+from json import JSONDecodeError
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
 
-# AWS S3 configuration
-s3 = boto3.client('s3')
-bucket_name = 'your-s3-bucket-name'
+# Version number
+app_version = "1.1.6"
 
-# Global variables
-client = Client()
-client.login('your_instagram_username', 'your_instagram_password')
+client = None  # Store the client for the single account
+s3 = None  # Store the S3 client
+bucket_name = None
 monitoring = {}
+comments_data = {}
+commenters_interests = {}  # Store commenters' interests here
 last_refresh_time = {}
 refresh_messages = {}
-csv_data_global = []
-next_cycle_time = time.time()
-commenters_interests = {}
+csv_data_global = []  # Store the CSV data to display on the web page
+post_urls = {}  # Initialize post_urls
+max_cycles = 100  # Set a maximum number of monitoring cycles
+max_interactions = 50  # Set a maximum number of interactions per session
+break_after_actions = 20  # Take a break after this many actions
+long_break_probability = 0.1  # Probability of taking a longer break
+long_break_duration = 7200  # Longer break duration in seconds (2 hours)
+next_cycle_time = time.time()  # Initialize next_cycle_time
 
-# Constants
-app_version = "1.1.6"
-break_after_actions = 10
-long_break_probability = 0.1
-long_break_duration = 3600
-break_duration = 600
+# Initialize OpenAI client
+openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
 
+@app.route('/check_saved_session', methods=['GET'])
+def check_saved_session():
+    saved_session = session.get('ig_session')
+    if saved_session:
+        profile_pic_url = session.get('profile_pic_url', '')
+        username = session.get('ig_username', '')
+        # Fetch the profile picture on the server side
+        if profile_pic_url:
+            try:
+                response = requests.get(profile_pic_url)
+                response.raise_for_status()
+                profile_pic_data = response.content
+                # Encode the image in base64
+                profile_pic_base64 = base64.b64encode(profile_pic_data).decode('utf-8')
+                return jsonify({
+                    'has_saved_session': True,
+                    'profile_pic_base64': profile_pic_base64,
+                    'username': username
+                })
+            except requests.RequestException as e:
+                print(f"Error fetching profile picture: {e}")
+                return jsonify({'has_saved_session': False})
+    return jsonify({'has_saved_session': False})
+
+@app.route('/continue_session', methods=['POST'])
+def continue_session():
+    global client, s3, bucket_name
+    saved_session = session.get('ig_session')
+    if not saved_session:
+        return jsonify({'status': 'No saved session available'}), 403
+    try:
+        client = Client()
+        client.set_settings(saved_session)
+        client.login_by_sessionid(client.sessionid)
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored successfully'})
+    except Exception as e:
+        return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
+
+@app.route('/login', methods=['POST'])
+def login():
+    global client, s3, bucket_name
+    insta_username = request.form['insta_username']
+    insta_password = request.form['insta_password']
+    
+    # Read AWS access key from secret file
+    with open('/etc/secrets/aws_access_key.txt', 'r') as file:
+        aws_access_key = file.read().strip()
+    
+    # Read AWS secret key from secret file
+    with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
+        aws_secret_key = file.read().strip()
+    
+    aws_region = 'us-east-1'
+    bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
+    
+    try:
+        print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
+        client = Client()
+
+        # Set device settings to simulate an iPhone 12 Pro
+        client.set_device({
+            "manufacturer": "Apple",
+            "model": "iPhone12,3",
+            "device": "d75f3509-4827-4f5e-9431-fd5b60c42305",
+            "app_version": "153.0.0.34.96",
+            "android_version": 29,
+            "android_release": "10",
+            "dpi": "440dpi",
+            "resolution": "1080x2340",
+            "cpu": "apple",
+            "version_code": "222826132",
+            "device_guid": str(uuid.uuid4())
+        })
+
+        # Debugging: Print the device settings
+        print(f"Device settings: {client.device}")
+
+        login_with_retries(client, insta_username, insta_password)
+        session['logged_in'] = True
+        session['ig_session'] = client.get_settings()
+        session['ig_username'] = insta_username
+
+        # Fetch and save the profile picture URL
+        profile_info = client.user_info_by_username(insta_username)
+        session['profile_pic_url'] = profile_info.profile_pic_url
+
+        # Configure AWS S3 client
+        s3 = boto3.client('s3', 
+            aws_access_key_id=aws_access_key, 
+            aws_secret_access_key=aws_secret_key, 
+            region_name=aws_region
+        )
+        return jsonify({'status': 'Login successful', 'version': app_version})
+    except Exception as e:
+        print(f"Login failed: {e} (App Version: {app_version})")
+        return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+
+def login_with_retries(client, username, password, retries=5, initial_delay=10):
+    delay = initial_delay
+    for i in range(retries):
+        try:
+            client.login(username, password)
+            return
+        except ClientError as e:
+            if 'Please wait a few minutes before you try again' in str(e):
+                print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
+                time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
+                delay *= 2  # Exponential backoff
+            else:
+                raise e
+    raise Exception("Maximum retries reached for login")
+
 @app.route('/start_monitoring', methods=['POST'])
 def start_monitoring():
-    username = request.form['username']
+    global next_cycle_time
+    if not session.get('logged_in'):
+        return jsonify({'status': 'Please login first', 'version': app_version}), 403
+
+    target_usernames = request.form.get('target_usernames')
+    if not target_usernames:
+        return jsonify({'status': 'No target usernames provided', 'version': app_version}), 400
+
+    target_usernames = target_usernames.split(',')  # List of usernames
+    for username in target_usernames:
+        username = username.strip()
+        user_id = search_user(username)
+        if user_id is None:
+            return jsonify({'status': f'User {username} not found or error occurred', 'version': app_version}), 404
+
+        start_monitoring_for_user(user_id, username)
+    
+    # Set the initial value for the next cycle time
+    next_cycle_time = time.time() + random.randint(1800, 3600)
+    
+    return jsonify({'status': 'Monitoring started', 'version': app_version})
+
+def start_monitoring_for_user(user_id, username):
+    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
     monitoring[username] = True
-    user_id = search_user(username)
-    if user_id:
-        last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
-        post_monitoring_loop(user_id, username)
-    return jsonify({"status": "Monitoring started for user: {}".format(username)})
+    refresh_messages[username] = []
+    comments_data[username] = []
+    post_urls[username] = []
+    last_refresh_time[username] = None
+    thread = Thread(target=post_monitoring_loop, args=(user_id, username))
+    thread.start()
 
 @app.route('/stop_monitoring', methods=['POST'])
 def stop_monitoring():
-    username = request.form['username']
-    monitoring[username] = False
-    return jsonify({"status": "Monitoring stopped for user: {}".format(username)})
+    global monitoring
+    monitoring = {key: False for key in monitoring}
+    return jsonify({'status': 'Monitoring stopped', 'version': app_version})
 
 @app.route('/get_post_urls', methods=['GET'])
 def get_post_urls():
-    global next_cycle_time
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 403
+    
     return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': int(next_cycle_time - time.time())})
 
-def retry_with_exponential_backoff(func, initial_delay=1, max_delay=60, max_retries=5):
+def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
-    for _ in range(max_retries):
+    for i in range(retries):
         try:
             return func()
+        except ClientError as e:
+            if 'Please wait a few minutes before you try again' in str(e):
+                print(f"Rate limit hit. Retrying in {delay} seconds. (App Version: {app_version})")
+                time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
+                delay *= 2  # Exponential backoff
+            else:
+                raise e
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
+            time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
+            delay *= 2  # Exponential backoff
         except ValueError as e:
             print(f"JSON decode error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
@@ -141,7 +298,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time, commenters_interests
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -195,49 +352,67 @@ def handle_new_post(username, post_url, unique_id, media_id):
             comments_data[username] = []
         comments_data[username].extend(new_comments)  # Append new comments
         print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
-        new_csv_data = [{'username': username, 'post_url': post_url, 'unique_id': unique_id,
-                         'commenter': comment[0], 'comment': comment[1], 'comment_time': comment[2]} for comment in new_comments]
+        new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(new_csv_data)
-        csv_filename = f"{username}_comments.csv"
-        write_to_s3(csv_data_global, csv_filename)
-        analyze_commenters(new_comments)
+        write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
 
-def analyze_commenters(comments):
-    global commenters_interests
-    sentiment_analysis = pipeline('sentiment-analysis')
+        for comment in new_comments:
+            commenter_username = comment[0]
+            profile_data = fetch_instagram_profile(commenter_username)
+            if profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
+                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                interests = analyze_interests(captions, images)
+                profile_data['interests'] = interests
 
-    for commenter, comment, _ in comments:
+                commenters_interests[commenter_username] = interests
+                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                
+                # Clear large variables to free up memory
+                del captions, images, profile_data, interests
+            else:
+                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
+    else:
+        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+
+def analyze_interests(captions, images):
+    text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    image_classifier = pipeline('image-classification', model="google/vit-base-patch16-224")
+
+    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
+
+    interests = {label: 0 for label in candidate_labels}
+
+    for caption in captions:
+        if not caption:
+            continue
+        result = text_classifier(caption, candidate_labels)
+        for label, score in zip(result['labels'], result['scores']):
+            interests[label] += score
+
+    for image_url in images:
         try:
-            user_id = get_user_id_with_retry(commenter)
-            user_info = client.user_info(user_id)
-            num_posts_to_analyze = 2  # Analyze up to 2 posts per commenter
-
-            if user_info.media_count < num_posts_to_analyze:
-                print(f"Skipping {commenter} due to insufficient posts for analysis. (App Version: {app_version})")
-                continue
-
-            posts = client.user_medias(user_id, num_posts_to_analyze)
-            interests = []
-            for post in posts:
-                caption = post.caption_text
-                if caption:
-                    analysis = sentiment_analysis(caption)
-                    interests.append(analysis)
-
-            commenters_interests[commenter] = interests
-            print(f"Analyzed interests for {commenter}: {interests} (App Version: {app_version})")
-
+            result = image_classifier(image_url)
+            for res in result:
+                if res['label'] in candidate_labels:
+                    interests[res['label']] += res['score']
         except Exception as e:
-            print(f"Error analyzing commenter {commenter}: {e} (App Version: {app_version})")
+            print(f"Error analyzing image {image_url}: {e}")
 
-def get_user_profile(username):
+    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    return sorted_interests
+
+def fetch_instagram_profile(username):
     try:
-        user_id = client.user_id_from_username(username)
-        user_info = client.user_info(user_id)
+        user_info = client.user_info_by_username(username)
+        user_id = user_info.pk
+
         profile_data = {
-            'username': username,
+            'username': user_info.username,
             'full_name': user_info.full_name,
             'biography': user_info.biography,
+            'media_count': user_info.media_count,
             'follower_count': user_info.follower_count,
             'following_count': user_info.following_count,
             'posts': []
