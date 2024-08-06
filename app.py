@@ -16,7 +16,7 @@ from transformers import pipeline
 from datetime import datetime
 from PIL import Image
 from io import BytesIO, StringIO
-from json import JSONDecodeError
+import gc  # Import garbage collection module
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -32,7 +32,6 @@ comments_data = {}
 commenters_interests = {}  # Store commenters' interests here
 last_refresh_time = {}
 refresh_messages = {}
-csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
@@ -45,7 +44,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
+    return render_template('index.html', version=app_version, commenters_interests=commenters_interests)
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -301,7 +300,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
+    global monitoring, last_refresh_time, refresh_messages, next_cycle_time
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -345,19 +344,13 @@ def scan_for_new_post(user_id, last_post_id, username):
     return None, None, None
 
 def handle_new_post(username, post_url, unique_id, media_id):
-    global comments_data, csv_data_global, commenters_interests
+    global commenters_interests
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
-        if username not in comments_data:
-            comments_data[username] = []
-        comments_data[username].extend(new_comments)  # Append new comments
-        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
-        csv_data_global.extend(new_csv_data)
-        write_to_s3(csv_data_global, 'NOC_data3.csv')
-        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
-
+        
+        # Process each commenter's profile data
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
@@ -376,8 +369,12 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 commenters_interests[commenter_username] = interests
 
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-            else:
-                print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
+
+        # Offload data to S3 immediately after processing
+        write_to_s3(new_csv_data, f'NOC_data_{uuid.uuid4().hex}.csv')
+        del new_csv_data  # Clear the data to free up memory
+        gc.collect()  # Invoke garbage collection to free up memory
+
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
