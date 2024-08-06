@@ -15,7 +15,6 @@ import openai
 import base64
 from transformers import pipeline
 from datetime import datetime
-from PIL import Image
 from json import JSONDecodeError
 
 app = Flask(__name__)
@@ -43,6 +42,9 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
+
+# Initialize Hugging Face model for image classification
+image_classifier = pipeline('image-classification', model='google/vit-base-patch16-224')
 
 @app.route('/')
 def index():
@@ -299,7 +301,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time, commenters_interests
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -361,26 +363,24 @@ def handle_new_post(username, post_url, unique_id, media_id):
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
-                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                interests = analyze_interests(captions, images)
-                profile_data['interests'] = interests
+            if profile_data:
+                captions = [post['caption'] for post in profile_data['posts']]
+                images = [post['media_url'] for post in profile_data['posts']]
+                if len(images) >= 2:  # Ensure the profile has at least 2 posts
+                    interests = analyze_interests(captions, images[:2])  # Analyze only the first 2 posts
+                    profile_data['interests'] = interests
 
-                commenters_interests[commenter_username] = interests
-                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-                
-                # Clear large variables to free up memory
-                del captions, images, profile_data, interests
+                    commenters_interests[commenter_username] = interests  # Store interests
+                    print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                else:
+                    print(f"Skipping {commenter_username} due to insufficient posts (App Version: {app_version})")
             else:
-                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
+                print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-    image_classifier = pipeline('image-classification')
-
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
     interests = {label: 0 for label in candidate_labels}
@@ -393,9 +393,7 @@ def analyze_interests(captions, images):
             interests[label] += score
 
     for image_url in images:
-        response = requests.get(image_url)
-        img = Image.open(BytesIO(response.content))
-        result = image_classifier(img)
+        result = image_classifier(image_url)  # Analyze image directly from URL
         for res in result:
             if res['label'] in candidate_labels:
                 interests[res['label']] += res['score']
