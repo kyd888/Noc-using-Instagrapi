@@ -42,8 +42,8 @@
                 {% for commenter, interests in commenters_interests.items() %}
                     <h3>{{ commenter }}</h3>
                     <ul>
-                        {% for interest in interests %}
-                            <li>{{ interest[0] }}: {{ interest[1] }}</li>
+                        {% for interest, score in interests %}
+                            <li>{{ interest }}: {{ score }}</li>
                         {% endfor %}
                     </ul>
                 {% endfor %}
