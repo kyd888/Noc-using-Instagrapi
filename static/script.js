@@ -22,6 +22,7 @@ $(document).ready(function() {
             if (response.status === 'Session restored successfully') {
                 $('#continue-session-section').hide();
                 $('#main-content').show();
+                fetchCommentersInterests();
             }
         });
     });
@@ -41,6 +42,7 @@ $(document).ready(function() {
             if (response.status === 'Login successful') {
                 $('#login-form').hide();
                 $('#main-content').show();
+                fetchCommentersInterests();
             }
         }).fail(function() {
             $loginButton.text('Login').prop('disabled', false);
@@ -59,7 +61,7 @@ $(document).ready(function() {
                     monitoring = true;
                     $startButton.hide();
                     $('#stop-monitoring').show();
-                    checkStatus();
+                    fetchCommentersInterests();
                 } else {
                     $startButton.text('Start Monitoring').prop('disabled', false);
                 }
@@ -84,55 +86,26 @@ $(document).ready(function() {
         }
     });
 
-    function checkStatus() {
+    function fetchCommentersInterests() {
         if (monitoring) {
             setTimeout(function() {
                 $.get('/get_post_urls', function(data) {
-                    updateAccountPostsList(data.post_urls);
+                    updateCommentersInterestsList(data.commenters_interests);
                     $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
-                checkStatus();
+                fetchCommentersInterests();
             }, 5000);
         }
     }
 
-    function updateAccountPostsList(data) {
-        $('#account-posts-list').empty();
-        for (let username in data) {
-            $('#account-posts-list').append(`<h3>Account: ${username}</h3>`);
-            const posts = data[username];
-            posts.forEach(post => {
-                $('#account-posts-list').append(`<p><a href="${post.url}" target="_blank">${post.url}</a> (${post.id})</p>`);
-            });
+    function updateCommentersInterestsList(data) {
+        $('#commenters-interests-list').empty();
+        for (let commenter in data) {
+            const interests = data[commenter];
+            const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
+            $('#commenters-interests-list').append(commenterElement);
         }
-    }
-
-    $('#fetch-profile-form').submit(function(event) {
-        event.preventDefault();
-        const targetUsername = $('#target_username').val().trim();
-        if (targetUsername) {
-            $.post('/fetch_profile_data', { target_username: targetUsername }, function(response) {
-                if (response.status === 'Profile fetched successfully') {
-                    displayProfileData(response.profile_data);
-                } else {
-                    alert(response.status);
-                }
-            });
-        }
-    });
-
-    function displayProfileData(profileData) {
-        $('#profile-result').empty().append(`
-            <h3>Profile: ${profileData.username}</h3>
-            <p>Full Name: ${profileData.full_name}</p>
-            <p>Biography: ${profileData.biography}</p>
-            <p>Followers: ${profileData.follower_count}</p>
-            <p>Following: ${profileData.following_count}</p>
-            <h4>Top Interests:</h4>
-            <ul id="interests-list">
-                ${profileData.interests.slice(0, 3).map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}
-            </ul>
-        `);
     }
 });
+
