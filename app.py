@@ -8,7 +8,7 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO
+from io import StringIO, BytesIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
@@ -39,7 +39,7 @@ max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
-next_cycle_time = None  # Initialize next_cycle_time
+next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
