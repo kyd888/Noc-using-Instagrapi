@@ -8,6 +8,7 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
+from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
@@ -15,8 +16,7 @@ import base64
 from transformers import pipeline
 from datetime import datetime
 from PIL import Image
-from io import BytesIO, StringIO
-import gc  # Import garbage collection module
+from json import JSONDecodeError
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -32,6 +32,7 @@ comments_data = {}
 commenters_interests = {}  # Store commenters' interests here
 last_refresh_time = {}
 refresh_messages = {}
+csv_data_global = []  # Store the CSV data to display on the web page
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
@@ -44,7 +45,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, commenters_interests=commenters_interests)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -91,8 +92,14 @@ def login():
     insta_username = request.form['insta_username']
     insta_password = request.form['insta_password']
     
-    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
-    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    # Read AWS access key from secret file
+    with open('/etc/secrets/aws_access_key.txt', 'r') as file:
+        aws_access_key = file.read().strip()
+    
+    # Read AWS secret key from secret file
+    with open('/etc/secrets/aws_secret_key.txt', 'r') as file:
+        aws_secret_key = file.read().strip()
+    
     aws_region = 'us-east-1'
     bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
     
@@ -224,7 +231,6 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
         except JSONDecodeError as e:
-            log_full_response(func)
             print(f"JSONDecodeError: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))
             delay *= 2
@@ -251,16 +257,11 @@ def get_latest_post(user_id):
         posts = retry_with_exponential_backoff(lambda: client.user_medias(user_id, amount=1))
         if posts:
             print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
-            return posts[0]
         else:
-            print("No posts found or user is private. (App Version: {app_version})")
-            return None
+            print("No posts found. (App Version: {app_version})")
+        return posts[0] if posts else None
     except JSONDecodeError as e:
-        log_full_response(f"https://www.instagram.com/{user_id}/?__a=1&__d=dis")
         print(f"JSONDecodeError: {e} (App Version: {app_version})")
-        return None
-    except requests.exceptions.RequestException as e:
-        print(f"RequestException: {e} (App Version: {app_version})")
         return None
     except Exception as e:
         print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
@@ -300,7 +301,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, next_cycle_time
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -340,46 +341,45 @@ def scan_for_new_post(user_id, last_post_id, username):
     if (latest_post and latest_post.pk != last_post_id):
         post_url = f"https://www.instagram.com/p/{latest_post.code}/"
         unique_id = str(uuid.uuid4().int)[:4]
+        post_urls[username].append({'url': post_url, 'id': unique_id})
+        print(f"Found new post: {post_url} (App Version: {app_version})")
         return latest_post, post_url, unique_id
     return None, None, None
 
 def handle_new_post(username, post_url, unique_id, media_id):
-    global commenters_interests
+    global comments_data, csv_data_global, commenters_interests
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
+        if username not in comments_data:
+            comments_data[username] = []
+        comments_data[username].extend(new_comments)  # Append new comments
+        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
-        
-        # Process each commenter's profile data
+        csv_data_global.extend(new_csv_data)
+        write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
+
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data:
-                if len(profile_data['posts']) < 5:  # Check if the profile has less than 5 posts
-                    print(f"Skipping {commenter_username} due to insufficient posts for analysis. (App Version: {app_version})")
-                    continue
-
-                captions = [post['caption'] for post in profile_data['posts']]
-                images = [post['media_url'] for post in profile_data['posts']]
-                print(f"Analyzing interests for commenter: {commenter_username}")
+            if profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
+                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
                 interests = analyze_interests(captions, images)
                 profile_data['interests'] = interests
 
-                # Store username and interests in commenters_interests
                 commenters_interests[commenter_username] = interests
-
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-
-        # Offload data to S3 immediately after processing
-        write_to_s3(new_csv_data, f'NOC_data_{uuid.uuid4().hex}.csv')
-        del new_csv_data  # Clear the data to free up memory
-        gc.collect()  # Invoke garbage collection to free up memory
-
+                
+                # Clear large variables to free up memory
+                del captions, images, profile_data, interests
+            else:
+                print(f"Skipping {commenter_username} due to insufficient posts or private account. (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
-    print("Starting interest analysis...")
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
     image_classifier = pipeline('image-classification')
 
@@ -387,30 +387,22 @@ def analyze_interests(captions, images):
 
     interests = {label: 0 for label in candidate_labels}
 
-    print("Analyzing captions...")
     for caption in captions:
         if not caption:
             continue
-        print(f"Classifying caption: {caption}")
         result = text_classifier(caption, candidate_labels)
         for label, score in zip(result['labels'], result['scores']):
             interests[label] += score
 
-    print("Analyzing images...")
     for image_url in images:
-        try:
-            print(f"Fetching image from URL: {image_url}")
-            response = requests.get(image_url)
-            img = Image.open(BytesIO(response.content))
-            result = image_classifier(img)
-            for res in result:
-                if res['label'] in candidate_labels:
-                    interests[res['label']] += res['score']
-        except Exception as e:
-            print(f"Error analyzing image: {e}")
+        response = requests.get(image_url)
+        img = Image.open(BytesIO(response.content))
+        result = image_classifier(img)
+        for res in result:
+            if res['label'] in candidate_labels:
+                interests[res['label']] += res['score']
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
-    print(f"Interests analysis result: {sorted_interests}")
     return sorted_interests
 
 def fetch_instagram_profile(username):
@@ -429,10 +421,6 @@ def fetch_instagram_profile(username):
         }
 
         medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
-        if not medias:
-            print(f"No posts found for user {username} or user is private. (App Version: {app_version})")
-            return None
-        
         for media in medias:
             try:
                 media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
@@ -455,14 +443,6 @@ def fetch_instagram_profile(username):
     except Exception as e:
         print(f"An error occurred while fetching data for {username}: {e}")
         return None
-
-def log_full_response(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        print(f"Full response from {url}: {response.text}")
-    except requests.exceptions.RequestException as e:
-        print(f"RequestException while fetching {url}: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
