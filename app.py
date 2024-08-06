@@ -15,6 +15,7 @@ import openai
 import base64
 from transformers import pipeline
 from datetime import datetime
+from PIL import Image
 from json import JSONDecodeError
 
 app = Flask(__name__)
@@ -42,6 +43,10 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
+
+# Load AI models
+text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+image_classifier = pipeline('image-classification')
 
 @app.route('/')
 def index():
@@ -377,9 +382,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
-    text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-    image_classifier = pipeline('image-classification')
-
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
     interests = {label: 0 for label in candidate_labels}
@@ -392,13 +394,10 @@ def analyze_interests(captions, images):
             interests[label] += score
 
     for image_url in images:
-        try:
-            result = image_classifier(image_url)
-            for res in result:
-                if res['label'] in candidate_labels:
-                    interests[res['label']] += res['score']
-        except Exception as e:
-            print(f"Error analyzing image: {e} (App Version: {app_version})")
+        result = image_classifier(image_url)
+        for res in result:
+            if res['label'] in candidate_labels:
+                interests[res['label']] += res['score']
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
