@@ -33,6 +33,7 @@ commenters_interests = {}  # Store commenters' interests here
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
+post_urls = {}  # Initialize post_urls
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
@@ -185,11 +186,11 @@ def start_monitoring():
     return jsonify({'status': 'Monitoring started', 'version': app_version})
 
 def start_monitoring_for_user(user_id, username):
-    global monitoring, commenters_interests, last_refresh_time, refresh_messages, comments_data
+    global monitoring, post_urls, last_refresh_time, refresh_messages, comments_data
     monitoring[username] = True
     refresh_messages[username] = []
     comments_data[username] = []
-    commenters_interests[username] = []
+    post_urls[username] = []
     last_refresh_time[username] = None
     thread = Thread(target=post_monitoring_loop, args=(user_id, username))
     thread.start()
@@ -204,11 +205,8 @@ def stop_monitoring():
 def get_post_urls():
     if not session.get('logged_in'):
         return jsonify({'error': 'Not logged in'}), 403
-
-    # Ensure next_cycle_time is defined before calculating the time until next cycle
-    time_until_next_cycle = max(0, int(next_cycle_time - time.time())) if next_cycle_time else "Unknown"
     
-    return jsonify({'commenters_interests': commenters_interests, 'seconds_until_next_cycle': time_until_next_cycle})
+    return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': int(next_cycle_time - time.time())})
 
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
@@ -301,7 +299,7 @@ def write_to_s3(data, filename):
         print(f"An error occurred: {e}")
 
 def post_monitoring_loop(user_id, username):
-    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time
+    global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time, commenters_interests
     last_post_id = None
     cycle_count = 0
     interaction_count = 0
@@ -375,7 +373,7 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 # Clear large variables to free up memory
                 del captions, images, profile_data, interests
             else:
-                print(f"Skipping {commenter_username} due to insufficient posts or private account. (App Version: {app_version})")
+                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
