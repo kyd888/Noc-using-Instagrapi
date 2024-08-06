@@ -8,13 +8,14 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO, BytesIO
+from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
 import base64
 from transformers import pipeline
 from datetime import datetime
+from PIL import Image
 from json import JSONDecodeError
 
 app = Flask(__name__)
@@ -28,27 +29,23 @@ s3 = None  # Store the S3 client
 bucket_name = None
 monitoring = {}
 comments_data = {}
-commenters_interests = {}  # Store commenters' interests here
+post_urls = {}
 last_refresh_time = {}
 refresh_messages = {}
 csv_data_global = []  # Store the CSV data to display on the web page
-post_urls = {}  # Initialize post_urls
 max_cycles = 100  # Set a maximum number of monitoring cycles
 max_interactions = 50  # Set a maximum number of interactions per session
 break_after_actions = 20  # Take a break after this many actions
 long_break_probability = 0.1  # Probability of taking a longer break
 long_break_duration = 7200  # Longer break duration in seconds (2 hours)
-next_cycle_time = time.time()  # Initialize next_cycle_time
+next_cycle_time = None  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
-# Initialize Hugging Face model for image classification
-image_classifier = pipeline('image-classification', model='google/vit-base-patch16-224')
-
 @app.route('/')
 def index():
-    return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
+    return render_template('index.html', version=app_version, csv_data=csv_data_global)
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -83,7 +80,6 @@ def continue_session():
     try:
         client = Client()
         client.set_settings(saved_session)
-        client.login_by_sessionid(client.sessionid)
         session['logged_in'] = True
         return jsonify({'status': 'Session restored successfully'})
     except Exception as e:
@@ -148,7 +144,7 @@ def login():
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
 
-def login_with_retries(client, username, password, retries=5, initial_delay=10):
+def login_with_retries(client, username, password, retries=5, initial_delay=60):
     delay = initial_delay
     for i in range(retries):
         try:
@@ -347,7 +343,7 @@ def scan_for_new_post(user_id, last_post_id, username):
     return None, None, None
 
 def handle_new_post(username, post_url, unique_id, media_id):
-    global comments_data, csv_data_global, commenters_interests
+    global comments_data, csv_data_global
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
@@ -363,24 +359,23 @@ def handle_new_post(username, post_url, unique_id, media_id):
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data:
-                captions = [post['caption'] for post in profile_data['posts']]
-                images = [post['media_url'] for post in profile_data['posts']]
-                if len(images) >= 2:  # Ensure the profile has at least 2 posts
-                    interests = analyze_interests(captions, images[:2])  # Analyze only the first 2 posts
-                    profile_data['interests'] = interests
+            if profile_data and len(profile_data['posts']) >= 2:
+                captions = [post['caption'] for post in profile_data['posts'][:2]]
+                images = [post['media_url'] for post in profile_data['posts'][:2]]
+                interests = analyze_interests(captions, images)
+                profile_data['interests'] = interests
 
-                    commenters_interests[commenter_username] = interests  # Store interests
-                    print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-                else:
-                    print(f"Skipping {commenter_username} due to insufficient posts (App Version: {app_version})")
+                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                # Optionally, you can store the interests data to S3 or display it as needed
             else:
-                print(f"Failed to fetch data for {commenter_username} (App Version: {app_version})")
+                print(f"Insufficient posts to analyze for {commenter_username} (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_interests(captions, images):
     text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    image_classifier = pipeline('image-classification')
+
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
     interests = {label: 0 for label in candidate_labels}
@@ -393,7 +388,7 @@ def analyze_interests(captions, images):
             interests[label] += score
 
     for image_url in images:
-        result = image_classifier(image_url)  # Analyze image directly from URL
+        result = image_classifier(image_url)
         for res in result:
             if res['label'] in candidate_labels:
                 interests[res['label']] += res['score']
