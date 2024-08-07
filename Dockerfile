@@ -1,4 +1,4 @@
-# Use the official Python image from the Docker Hub
+# Use the official Python slim image from the Docker Hub
 FROM python:3.9-slim
 
 # Set the working directory inside the container
