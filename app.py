@@ -207,6 +207,10 @@ def get_post_urls():
     
     return jsonify({'post_urls': post_urls, 'seconds_until_next_cycle': int(next_cycle_time - time.time())})
 
+@app.route('/get_commenters_interests', methods=['GET'])
+def get_commenters_interests():
+    return jsonify({'commenters_interests': commenters_interests})
+
 def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
     delay = initial_delay
     for i in range(retries):
@@ -381,30 +385,29 @@ def analyze_interests(captions, images):
 
     interests = {label: 0 for label in candidate_labels}
 
-    print(f"Analyzing text interests (App Version: {app_version})")
     for caption in captions:
         if not caption:
             continue
-        response = requests.post(
-            "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
-            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-            json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
+        result = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"Analyze the following text for interests: {caption}. Provide a score for each interest category: {', '.join(candidate_labels)}.",
+            max_tokens=60
         )
-        result = response.json()
-        for label, score in zip(result['labels'], result['scores']):
-            interests[label] += score
+        analysis = result.choices[0].text.strip().split(',')
+        for label_score in analysis:
+            label, score = label_score.split(':')
+            interests[label.strip()] += float(score.strip())
 
-    print(f"Analyzing image interests (App Version: {app_version})")
     for image_url in images:
-        response = requests.post(
-            "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
-            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-            json={"inputs": image_url}
+        result = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"Analyze the content of the following image URL for interests: {image_url}. Provide a score for each interest category: {', '.join(candidate_labels)}.",
+            max_tokens=60
         )
-        result = response.json()
-        for res in result:
-            if res['label'] in candidate_labels:
-                interests[res['label']] += res['score']
+        analysis = result.choices[0].text.strip().split(',')
+        for label_score in analysis:
+            label, score = label_score.split(':')
+            interests[label.strip()] += float(score.strip())
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
