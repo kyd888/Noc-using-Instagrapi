@@ -1,111 +1,67 @@
-$(document).ready(function() {
-    let monitoring = false;
-
-    checkSavedSession();
-
-    function checkSavedSession() {
-        $.get('/check_saved_session', function(response) {
-            if (response.has_saved_session) {
-                if (response.profile_pic_base64) {
-                    $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
-                }
-                $('#profile-username').text(response.username);
-                $('#login-form').hide();
-                $('#continue-session-section').show();
-            }
-        });
-    }
-
-    $('#continue-session').click(function() {
-        $.post('/continue_session', function(response) {
-            alert(response.status);
-            if (response.status === 'Session restored successfully') {
-                $('#continue-session-section').hide();
-                $('#main-content').show();
-                fetchCommentersInterests();
-            }
-        });
-    });
-
-    $('#new-login').click(function() {
-        $('#continue-session-section').hide();
-        $('#login-form').show();
-    });
-
-    $('#login-form').submit(function(event) {
-        event.preventDefault();
-        const $loginButton = $(this).find('button[type="submit"]');
-        $loginButton.text('Loading...').prop('disabled', true);
-        $.post('/login', $(this).serialize(), function(response) {
-            alert(response.status);
-            $loginButton.text('Login').prop('disabled', false);
-            if (response.status === 'Login successful') {
-                $('#login-form').hide();
-                $('#main-content').show();
-                fetchCommentersInterests();
-            }
-        }).fail(function() {
-            $loginButton.text('Login').prop('disabled', false);
-        });
-    });
-
-    $('#monitor-form').submit(function(event) {
-        event.preventDefault();
-        if (!monitoring) {
-            const $startButton = $('#start-monitoring');
-            $startButton.text('Loading...').prop('disabled', true);
-            const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
-            $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
-                alert(response.status);
-                if (response.status === 'Monitoring started') {
-                    monitoring = true;
-                    $startButton.hide();
-                    $('#stop-monitoring').show();
-                    fetchCommentersInterests();
-                } else {
-                    $startButton.text('Start Monitoring').prop('disabled', false);
-                }
-            }).fail(function() {
-                $startButton.text('Start Monitoring').prop('disabled', false);
-            });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Monitoring</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
-    });
-
-    $('#stop-monitoring').click(function() {
-        if (monitoring) {
-            const $stopButton = $(this);
-            $stopButton.text('Loading...').prop('disabled', true);
-            $.post('/stop_monitoring', function(response) {
-                alert(response.status);
-                monitoring = false;
-                $stopButton.text('Stop Monitoring').hide();
-                $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
-            }).fail(function() {
-                $stopButton.text('Stop Monitoring').prop('disabled', false);
-            });
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
         }
-    });
-
-    function fetchCommentersInterests() {
-        if (monitoring) {
-            setTimeout(function() {
-                $.get('/get_post_urls', function(data) {
-                    updateCommentersInterestsList(data.commenters_interests);
-                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
-                });
-
-                fetchCommentersInterests();
-            }, 5000);
+        th {
+            background-color: #f2f2f2;
         }
-    }
+    </style>
+</head>
+<body>
+    <h1>Instagram Monitoring - Version {{ version }}</h1>
+    <h2>Commenters and Their Interests</h2>
+    <table id="interests-table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Interests</th>
+            </tr>
+        </thead>
+        <tbody id="interests-body">
+            {% for username, interests in commenters_interests.items() %}
+                <tr>
+                    <td>{{ username }}</td>
+                    <td>{{ interests }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-    function updateCommentersInterestsList(data) {
-        $('#commenters-interests-list').empty();
-        for (let commenter in data) {
-            const interests = data[commenter];
-            const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
-            $('#commenters-interests-list').append(commenterElement);
+    <script>
+        function fetchInterests() {
+            fetch('/get_commenters_interests')
+                .then(response => response.json())
+                .then(data => {
+                    const interestsBody = document.getElementById('interests-body');
+                    interestsBody.innerHTML = ''; // Clear the table body
+                    for (const [username, interests] of Object.entries(data.commenters_interests)) {
+                        const row = document.createElement('tr');
+                        const usernameCell = document.createElement('td');
+                        usernameCell.textContent = username;
+                        const interestsCell = document.createElement('td');
+                        interestsCell.textContent = JSON.stringify(interests);
+                        row.appendChild(usernameCell);
+                        row.appendChild(interestsCell);
+                        interestsBody.appendChild(row);
+                    }
+                })
+                .catch(error => console.error('Error fetching interests:', error));
         }
-    }
-});
 
+        setInterval(fetchInterests, 10000); // Fetch data every 10 seconds
+        fetchInterests(); // Initial fetch
+    </script>
+</body>
+</html>
