@@ -1,169 +1,110 @@
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(45deg, #d3d3d3, #ffffff);
-    margin: 0;
-    padding: 0;
-    color: #333;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    box-sizing: border-box;
-}
+$(document).ready(function() {
+    let monitoring = false;
 
-.logo-container {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-}
+    checkSavedSession();
 
-.logo {
-    width: 100px;
-    height: auto;
-}
-
-form, #continue-session-section {
-    background: #fff;
-    padding: 50px;
-    margin: 20px auto;
-    border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    width: 100%;
-    text-align: center;
-}
-
-#profile-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-#profile-pic {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 10px;
-}
-
-#profile-username {
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-.no-border {
-    border: none;
-    padding: 20px 0;
-}
-
-.no-border legend {
-    font-size: 1.5em;
-    font-weight: bold;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-label {
-    font-weight: bold;
-    display: block;
-    margin-top: 10px;
-}
-
-input[type="text"],
-input[type="password"] {
-    width: calc(100% - 22px);
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-button {
-    width: calc(100% - 22px);
-    padding: 10px;
-    border: 2px solid black;
-    border-radius: 4px;
-    background-color: black;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-    margin: 5px 0;
-}
-
-button:hover {
-    background-color: white;
-    color: black;
-}
-
-#main-content {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    max-width: 1200px;
-    margin: 20px auto;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-#left-panel, #right-panel {
-    background: #fff;
-    padding: 20px;
-    margin: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: calc(50% - 40px);
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-#left-panel {
-    margin-right: 20px;  /* Add space between the panels */
-}
-
-#right-panel {
-    margin-left: 20px;  /* Add space between the panels */
-}
-
-#monitor-form {
-    width: 80%;
-    max-width: 60%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-#monitor-form label,
-#monitor-form input[type="text"],
-#monitor-form button {
-    width: 90%;
-    max-width: 100%;
-    text-align: left;
-}
-
-h2 {
-    text-align: center;
-    color: #333;
-}
-
-@media (max-width: 768px) {
-    #main-content {
-        flex-direction: column;
-        align-items: center;
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.has_saved_session) {
+                if (response.profile_pic_base64) {
+                    $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
+                }
+                $('#profile-username').text(response.username);
+                $('#login-form').hide();
+                $('#continue-session-section').show();
+            }
+        });
     }
 
-    #left-panel, #right-panel {
-        width: 90%;
-        margin: 10px;
+    $('#continue-session').click(function() {
+        $.post('/continue_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored successfully') {
+                $('#continue-session-section').hide();
+                $('#main-content').show();
+                fetchCommentersInterests();
+            }
+        });
+    });
+
+    $('#new-login').click(function() {
+        $('#continue-session-section').hide();
+        $('#login-form').show();
+    });
+
+    $('#login-form').submit(function(event) {
+        event.preventDefault();
+        const $loginButton = $(this).find('button[type="submit"]');
+        $loginButton.text('Loading...').prop('disabled', true);
+        $.post('/login', $(this).serialize(), function(response) {
+            alert(response.status);
+            $loginButton.text('Login').prop('disabled', false);
+            if (response.status === 'Login successful') {
+                $('#login-form').hide();
+                $('#main-content').show();
+                fetchCommentersInterests();
+            }
+        }).fail(function() {
+            $loginButton.text('Login').prop('disabled', false);
+        });
+    });
+
+    $('#monitor-form').submit(function(event) {
+        event.preventDefault();
+        if (!monitoring) {
+            const $startButton = $('#start-monitoring');
+            $startButton.text('Loading...').prop('disabled', true);
+            const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+            $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
+                alert(response.status);
+                if (response.status === 'Monitoring started') {
+                    monitoring = true;
+                    $startButton.hide();
+                    $('#stop-monitoring').show();
+                    fetchCommentersInterests();
+                } else {
+                    $startButton.text('Start Monitoring').prop('disabled', false);
+                }
+            }).fail(function() {
+                $startButton.text('Start Monitoring').prop('disabled', false);
+            });
+        }
+    });
+
+    $('#stop-monitoring').click(function() {
+        if (monitoring) {
+            const $stopButton = $(this);
+            $stopButton.text('Loading...').prop('disabled', true);
+            $.post('/stop_monitoring', function(response) {
+                alert(response.status);
+                monitoring = false;
+                $stopButton.text('Stop Monitoring').hide();
+                $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
+            }).fail(function() {
+                $stopButton.text('Stop Monitoring').prop('disabled', false);
+            });
+        }
+    });
+
+    function fetchCommentersInterests() {
+        if (monitoring) {
+            setTimeout(function() {
+                $.get('/get_post_urls', function(data) {
+                    updateCommentersInterestsList(data.commenters_interests);
+                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
+                });
+
+                fetchCommentersInterests();
+            }, 5000);
+        }
     }
 
-    form, #continue-session-section {
-        padding: 20px;
+    function updateCommentersInterestsList(data) {
+        $('#commenters-interests-list').empty();
+        for (let commenter in data) {
+            const interests = data[commenter];
+            const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
+            $('#commenters-interests-list').append(commenterElement);
+        }
     }
-} 
+});
