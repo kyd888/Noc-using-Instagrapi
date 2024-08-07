@@ -1,4 +1,4 @@
-# Use the official Python slim image from the Docker Hub
+# Use the official Python image from the Docker Hub
 FROM python:3.9-slim
 
 # Set the working directory inside the container
@@ -8,6 +8,10 @@ WORKDIR /app
 COPY requirements.txt /app/
 
 # Install any necessary dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the code
