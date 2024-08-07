@@ -441,6 +441,27 @@ def fetch_instagram_profile(username):
         print(f"An error occurred while fetching data for {username}: {e}")
         return None
 
+def fetch_large_file(url):
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+
+    content = BytesIO()
+    for chunk in response.iter_content(chunk_size=8192):
+        content.write(chunk)
+    content.seek(0)
+    return content
+
+@app.route('/download_large_file', methods=['POST'])
+def download_large_file():
+    file_url = request.form['file_url']
+    try:
+        content = fetch_large_file(file_url)
+        df = pd.read_csv(content)
+        return df.to_html()  # Just an example, adjust as necessary
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     app.run(host='0.0.0.0', port=port)
+
