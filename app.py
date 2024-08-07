@@ -8,12 +8,11 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO
+from io import StringIO, BytesIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
 import base64
-from transformers import pipeline
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
@@ -43,10 +42,6 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
-
-# Load AI models
-text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-image_classifier = pipeline('image-classification')
 
 @app.route('/')
 def index():
@@ -350,7 +345,6 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
-    print(f"Handling new post for {username} (App Version: {app_version})")
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
@@ -366,20 +360,19 @@ def handle_new_post(username, post_url, unique_id, media_id):
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data:
-                if len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
-                    print(f"Analyzing interests for {commenter_username} (App Version: {app_version})")
-                    captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                    images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                    interests = analyze_interests(captions, images)
-                    profile_data['interests'] = interests
+            if profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
+                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                interests = analyze_interests(captions, images)
+                profile_data['interests'] = interests
 
-                    commenters_interests[commenter_username] = interests
-                    print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-                else:
-                    print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
+                commenters_interests[commenter_username] = interests
+                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                
+                # Clear large variables to free up memory
+                del captions, images, profile_data, interests
             else:
-                print(f"Failed to fetch profile data for {commenter_username} (App Version: {app_version})")
+                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
@@ -392,13 +385,23 @@ def analyze_interests(captions, images):
     for caption in captions:
         if not caption:
             continue
-        result = text_classifier(caption, candidate_labels)
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+            json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
+        )
+        result = response.json()
         for label, score in zip(result['labels'], result['scores']):
             interests[label] += score
 
     print(f"Analyzing image interests (App Version: {app_version})")
     for image_url in images:
-        result = image_classifier(image_url)
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
+            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+            json={"inputs": image_url}
+        )
+        result = response.json()
         for res in result:
             if res['label'] in candidate_labels:
                 interests[res['label']] += res['score']
@@ -440,10 +443,9 @@ def fetch_instagram_profile(username):
             }
             profile_data['posts'].append(post)
 
-        print(f"Fetched profile data for {username} (App Version: {app_version})")
         return profile_data
     except Exception as e:
-        print(f"An error occurred while fetching data for {username}: {e} (App Version: {app_version})")
+        print(f"An error occurred while fetching data for {username}: {e}")
         return None
 
 if __name__ == '__main__':
