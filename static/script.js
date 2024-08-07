@@ -1,67 +1,169 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Monitoring</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
-</head>
-<body>
-    <h1>Instagram Monitoring - Version {{ version }}</h1>
-    <h2>Commenters and Their Interests</h2>
-    <table id="interests-table">
-        <thead>
-            <tr>
-                <th>Username</th>
-                <th>Interests</th>
-            </tr>
-        </thead>
-        <tbody id="interests-body">
-            {% for username, interests in commenters_interests.items() %}
-                <tr>
-                    <td>{{ username }}</td>
-                    <td>{{ interests }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(45deg, #d3d3d3, #ffffff);
+    margin: 0;
+    padding: 0;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
 
-    <script>
-        function fetchInterests() {
-            fetch('/get_commenters_interests')
-                .then(response => response.json())
-                .then(data => {
-                    const interestsBody = document.getElementById('interests-body');
-                    interestsBody.innerHTML = ''; // Clear the table body
-                    for (const [username, interests] of Object.entries(data.commenters_interests)) {
-                        const row = document.createElement('tr');
-                        const usernameCell = document.createElement('td');
-                        usernameCell.textContent = username;
-                        const interestsCell = document.createElement('td');
-                        interestsCell.textContent = JSON.stringify(interests);
-                        row.appendChild(usernameCell);
-                        row.appendChild(interestsCell);
-                        interestsBody.appendChild(row);
-                    }
-                })
-                .catch(error => console.error('Error fetching interests:', error));
-        }
+.logo-container {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+}
 
-        setInterval(fetchInterests, 10000); // Fetch data every 10 seconds
-        fetchInterests(); // Initial fetch
-    </script>
-</body>
-</html>
+.logo {
+    width: 100px;
+    height: auto;
+}
+
+form, #continue-session-section {
+    background: #fff;
+    padding: 50px;
+    margin: 20px auto;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+}
+
+#profile-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+#profile-username {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.no-border {
+    border: none;
+    padding: 20px 0;
+}
+
+.no-border legend {
+    font-size: 1.5em;
+    font-weight: bold;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: calc(100% - 22px);
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    width: calc(100% - 22px);
+    padding: 10px;
+    border: 2px solid black;
+    border-radius: 4px;
+    background-color: black;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+    margin: 5px 0;
+}
+
+button:hover {
+    background-color: white;
+    color: black;
+}
+
+#main-content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#left-panel, #right-panel {
+    background: #fff;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    width: calc(50% - 40px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#left-panel {
+    margin-right: 20px;  /* Add space between the panels */
+}
+
+#right-panel {
+    margin-left: 20px;  /* Add space between the panels */
+}
+
+#monitor-form {
+    width: 80%;
+    max-width: 60%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#monitor-form label,
+#monitor-form input[type="text"],
+#monitor-form button {
+    width: 90%;
+    max-width: 100%;
+    text-align: left;
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    #main-content {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #left-panel, #right-panel {
+        width: 90%;
+        margin: 10px;
+    }
+
+    form, #continue-session-section {
+        padding: 20px;
+    }
+} 
