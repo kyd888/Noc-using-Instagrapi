@@ -5,9 +5,8 @@ requests==2.25.1
 boto3==1.18.1
 numpy==1.23.5
 pandas==1.5.2
-Pillow>=8.1.1
+Pillow==8.1.1
 openai==0.27.0
 Werkzeug==2.2.2
 transformers==4.11.3
-torch==2.0.1
 tokenizers==0.10.1
