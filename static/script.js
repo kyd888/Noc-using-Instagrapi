@@ -1,103 +1,111 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('login-form');
-    const continueSessionSection = document.getElementById('continue-session-section');
-    const profileInfo = document.getElementById('profile-info');
-    const mainContent = document.getElementById('main-content');
-    const monitorForm = document.getElementById('monitor-form');
-    const postUrlsList = document.getElementById('post-urls');
-    const commentersInterestsList = document.getElementById('commenters-interests');
+$(document).ready(function() {
+    let monitoring = false;
 
-    // Check if there's a saved session
-    fetch('/check_saved_session')
-        .then(response => response.json())
-        .then(data => {
-            if (data.has_saved_session) {
-                profileInfo.querySelector('#profile-pic').src = `data:image/png;base64,${data.profile_pic_base64}`;
-                profileInfo.querySelector('#profile-username').textContent = data.username;
-                continueSessionSection.style.display = 'block';
-                loginForm.style.display = 'none';
+    checkSavedSession();
+
+    function checkSavedSession() {
+        $.get('/check_saved_session', function(response) {
+            if (response.has_saved_session) {
+                if (response.profile_pic_base64) {
+                    $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
+                }
+                $('#profile-username').text(response.username);
+                $('#login-form').hide();
+                $('#continue-session-section').show();
             }
         });
-
-    // Handle login form submission
-    loginForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const formData = new FormData(loginForm);
-        fetch('/login', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'Login successful') {
-                window.location.reload();
-            } else {
-                alert(data.status);
-            }
-        });
-    });
-
-    // Handle continue session button
-    document.getElementById('continue-session').addEventListener('click', function() {
-        fetch('/continue_session', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'Session restored successfully') {
-                continueSessionSection.style.display = 'none';
-                mainContent.style.display = 'flex';
-            } else {
-                alert(data.status);
-            }
-        });
-    });
-
-    // Handle monitor form submission
-    monitorForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const formData = new FormData(monitorForm);
-        fetch('/start_monitoring', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'Monitoring started') {
-                alert('Monitoring started');
-                mainContent.style.display = 'flex';
-            } else {
-                alert(data.status);
-            }
-        });
-    });
-
-    // Function to update post URLs and commenters' interests
-    function updateMonitoringData() {
-        fetch('/get_post_urls')
-            .then(response => response.json())
-            .then(data => {
-                postUrlsList.innerHTML = '';
-                data.post_urls.forEach(post => {
-                    const li = document.createElement('li');
-                    li.textContent = post.url;
-                    postUrlsList.appendChild(li);
-                });
-            });
-
-        fetch('/get_commenters_interests')
-            .then(response => response.json())
-            .then(data => {
-                commentersInterestsList.innerHTML = '';
-                Object.entries(data.commenters_interests).forEach(([username, interests]) => {
-                    const li = document.createElement('li');
-                    li.textContent = `${username}: ${JSON.stringify(interests)}`;
-                    commentersInterestsList.appendChild(li);
-                });
-            });
     }
 
-    // Periodically update monitoring data
-    setInterval(updateMonitoringData, 60000);  // Update every 60 seconds
+    $('#continue-session').click(function() {
+        $.post('/continue_session', function(response) {
+            alert(response.status);
+            if (response.status === 'Session restored successfully') {
+                $('#continue-session-section').hide();
+                $('#main-content').show();
+                fetchCommentersInterests();
+            }
+        });
+    });
+
+    $('#new-login').click(function() {
+        $('#continue-session-section').hide();
+        $('#login-form').show();
+    });
+
+    $('#login-form').submit(function(event) {
+        event.preventDefault();
+        const $loginButton = $(this).find('button[type="submit"]');
+        $loginButton.text('Loading...').prop('disabled', true);
+        $.post('/login', $(this).serialize(), function(response) {
+            alert(response.status);
+            $loginButton.text('Login').prop('disabled', false);
+            if (response.status === 'Login successful') {
+                $('#login-form').hide();
+                $('#main-content').show();
+                fetchCommentersInterests();
+            }
+        }).fail(function() {
+            $loginButton.text('Login').prop('disabled', false);
+        });
+    });
+
+    $('#monitor-form').submit(function(event) {
+        event.preventDefault();
+        if (!monitoring) {
+            const $startButton = $('#start-monitoring');
+            $startButton.text('Loading...').prop('disabled', true);
+            const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+            $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
+                alert(response.status);
+                if (response.status === 'Monitoring started') {
+                    monitoring = true;
+                    $startButton.hide();
+                    $('#stop-monitoring').show();
+                    fetchCommentersInterests();
+                } else {
+                    $startButton.text('Start Monitoring').prop('disabled', false);
+                }
+            }).fail(function() {
+                $startButton.text('Start Monitoring').prop('disabled', false);
+            });
+        }
+    });
+
+    $('#stop-monitoring').click(function() {
+        if (monitoring) {
+            const $stopButton = $(this);
+            $stopButton.text('Loading...').prop('disabled', true);
+            $.post('/stop_monitoring', function(response) {
+                alert(response.status);
+                monitoring = false;
+                $stopButton.text('Stop Monitoring').hide();
+                $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
+            }).fail(function() {
+                $stopButton.text('Stop Monitoring').prop('disabled', false);
+            });
+        }
+    });
+
+    function fetchCommentersInterests() {
+        if (monitoring) {
+            setTimeout(function() {
+                $.get('/get_post_urls', function(data) {
+                    updateCommentersInterestsList(data.commenters_interests);
+                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
+                });
+
+                fetchCommentersInterests();
+            }, 5000);
+        }
+    }
+
+    function updateCommentersInterestsList(data) {
+        $('#commenters-interests-list').empty();
+        for (let commenter in data) {
+            const interests = data[commenter];
+            const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
+            $('#commenters-interests-list').append(commenterElement);
+        }
+    }
 });
 
