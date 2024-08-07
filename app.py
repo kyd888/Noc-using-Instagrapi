@@ -8,14 +8,12 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO, BytesIO
+from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
 import base64
-from transformers import pipeline
 from datetime import datetime
-from PIL import Image
 from json import JSONDecodeError
 
 app = Flask(__name__)
@@ -43,10 +41,6 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
-
-# Load AI models
-text_classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-image_classifier = pipeline('image-classification')
 
 @app.route('/')
 def index():
@@ -385,16 +379,27 @@ def analyze_interests(captions, images):
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
     interests = {label: 0 for label in candidate_labels}
+    api_key = os.environ.get('HUGGINGFACE_API_KEY')
 
     for caption in captions:
         if not caption:
             continue
-        result = text_classifier(caption, candidate_labels)
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
+        )
+        result = response.json()
         for label, score in zip(result['labels'], result['scores']):
             interests[label] += score
 
     for image_url in images:
-        result = image_classifier(image_url)
+        response = requests.post(
+            "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"inputs": image_url}
+        )
+        result = response.json()
         for res in result:
             if res['label'] in candidate_labels:
                 interests[res['label']] += res['score']
