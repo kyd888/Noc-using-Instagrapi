@@ -18,6 +18,7 @@ from PIL import Image
 from json import JSONDecodeError
 from clarifai.rest import ClarifaiApp, Image as ClImage
 from ibm_watson import NaturalLanguageUnderstandingV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
 
 app = Flask(__name__)
@@ -55,11 +56,12 @@ ibm_watson_api_key = os.environ.get('IBM_WATSON_API_KEY')
 ibm_watson_url = os.environ.get('IBM_WATSON_URL')
 
 # Initialize Watson NLU client
+authenticator = IAMAuthenticator(ibm_watson_api_key)
 nlu = NaturalLanguageUnderstandingV1(
     version='2021-08-01',
-    apikey=ibm_watson_api_key,
-    url=ibm_watson_url
+    authenticator=authenticator
 )
+nlu.set_service_url(ibm_watson_url)
 
 @app.route('/')
 def index():
