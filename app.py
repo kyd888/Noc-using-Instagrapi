@@ -367,35 +367,44 @@ def handle_new_post(username, post_url, unique_id, media_id):
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
             if profile_data:
+                print(f"Analyzing profile picture and bio for {commenter_username}")
                 profile_picture_url = profile_data['profile_picture_url']
                 bio_text = profile_data['biography']
+
+                print(f"Profile picture URL: {profile_picture_url}")
+                print(f"Bio text: {bio_text}")
+
+                print(f"Starting AI analysis for {commenter_username}")
                 analysis_result = comprehensive_analysis(profile_picture_url, bio_text)
+
+                print(f"AI analysis result for {commenter_username}: {analysis_result}")
                 commenters_interests[commenter_username] = analysis_result
-                print(f"Profile analysis for {commenter_username}: {analysis_result}")
 
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
 def analyze_image(image_url):
-    # Using the workflow URL and PAT for the image classification workflow
+    print(f"Analyzing image at URL: {image_url}")
     clarifai_app = ClarifaiApp(api_key=clarifai_pat)
     model = clarifai_app.public_models.general_model
     image = ClImage(url=image_url)
     response = model.predict([image])
+    print(f"Image analysis response: {response}")
     return response
 
 def analyze_text(text):
-    # Detect language
+    print(f"Analyzing text: {text}")
     try:
         language = detect(text)
     except Exception as e:
         language = "unknown"
         print(f"Language detection failed: {e}")
-    
+
     # Placeholder for more advanced text analysis
     categories = ["music", "travel", "food", "fitness", "gaming", "lifestyle", "technology", "fashion", "sports", "movies", "books", "art"]
     keywords = text.split()  # Naive keyword extraction
     
+    print(f"Text analysis result: language={language}, categories={categories}, keywords={keywords}")
     return {
         'language': language,
         'categories': categories,
@@ -403,6 +412,7 @@ def analyze_text(text):
     }
 
 def comprehensive_analysis(profile_picture_url, bio_text):
+    print("Starting comprehensive analysis...")
     # Analyze profile picture for gender, age, and ethnicity
     image_analysis = analyze_image(profile_picture_url)
     
@@ -418,8 +428,8 @@ def comprehensive_analysis(profile_picture_url, bio_text):
     language = text_analysis.get('language', 'unknown')
     categories = text_analysis['categories']
     keywords = text_analysis['keywords']
-    
-    return {
+
+    result = {
         'gender': gender,
         'age': age,
         'ethnicity': ethnicity,
@@ -427,6 +437,8 @@ def comprehensive_analysis(profile_picture_url, bio_text):
         'categories': categories,
         'keywords': keywords
     }
+    print(f"Comprehensive analysis result: {result}")
+    return result
 
 def fetch_instagram_profile(username):
     try:
@@ -463,10 +475,6 @@ def fetch_instagram_profile(username):
             }
             profile_data['posts'].append(post)
 
-        # Enhanced analysis
-        profile_data['interests'] = extract_interests(user_info.biography, profile_data['posts'])
-        profile_data['age_estimate'] = estimate_age(user_info.biography, profile_data['posts'])
-
         return profile_data
     except JSONDecodeError as e:
         print(f"JSONDecodeError: {e} while fetching data for {username}")
@@ -477,26 +485,6 @@ def fetch_instagram_profile(username):
     except Exception as e:
         print(f"Unexpected error: {e} while fetching data for {username}")
         return None
-
-def extract_interests(biography, posts):
-    candidate_labels = ["music", "travel", "food", "fitness", "gaming", "lifestyle", "technology", "fashion", "sports", "movies", "books", "art"]
-    interests = {label: 0 for label in candidate_labels}
-
-    text_data = [biography] + [post['caption'] for post in posts if post['caption']]
-    for text in text_data:
-        if not text:
-            continue
-        for label in candidate_labels:
-            if label in text.lower():
-                interests[label] += 1
-
-    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
-    return sorted_interests
-
-def estimate_age(biography, posts):
-    # Implement age estimation logic here (e.g., analyzing language style, references to historical events, or profile picture analysis)
-    # This is a placeholder function, you can implement a more sophisticated logic or use an external API
-    return "Unknown"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
