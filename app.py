@@ -19,9 +19,6 @@ from json import JSONDecodeError
 from clarifai.rest import ClarifaiApp, Image as ClImage
 from ibm_watson import NaturalLanguageUnderstandingV1
 from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -52,11 +49,18 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 # Initialize Clarifai client
 clarifai_app = ClarifaiApp(api_key=os.environ.get('CLARIFAI_API_KEY'))
 
+# Read IBM Watson API key and URL from secret files
+with open('/etc/secrets/IBM_WATSON_API_KEY', 'r') as file:
+    ibm_watson_api_key = file.read().strip()
+
+with open('/etc/secrets/IBM_WATSON_URL', 'r') as file:
+    ibm_watson_url = file.read().strip()
+
 # Initialize Watson NLU client
 nlu = NaturalLanguageUnderstandingV1(
     version='2021-08-01',
-    iam_apikey=os.getenv('IBM_WATSON_API_KEY'),
-    url=os.getenv('IBM_WATSON_URL')
+    iam_apikey=ibm_watson_api_key,
+    url=ibm_watson_url
 )
 
 @app.route('/')
