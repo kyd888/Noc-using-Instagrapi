@@ -471,3 +471,4 @@ def fetch_instagram_profile(username):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     socketio.run(app, host='0.0.0.0', port=port)
+
