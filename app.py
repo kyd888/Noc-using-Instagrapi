@@ -46,15 +46,19 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
-# Initialize Clarifai client
-clarifai_app = ClarifaiApp(api_key=os.environ.get('CLARIFAI_API_KEY'))
+# Read Clarifai API keys from environment variables
+gender_model_key = os.environ.get('CLARIFAI_GENDER_API_KEY')
+age_model_key = os.environ.get('CLARIFAI_AGE_API_KEY')
+ethnicity_model_key = os.environ.get('CLARIFAI_ETHNICITY_API_KEY')
 
-# Read IBM Watson API key and URL from secret files
-with open('/etc/secrets/IBM_WATSON_API_KEY', 'r') as file:
-    ibm_watson_api_key = file.read().strip()
+# Initialize Clarifai clients for each model
+clarifai_app_gender = ClarifaiApp(api_key=gender_model_key)
+clarifai_app_age = ClarifaiApp(api_key=age_model_key)
+clarifai_app_ethnicity = ClarifaiApp(api_key=ethnicity_model_key)
 
-with open('/etc/secrets/IBM_WATSON_URL', 'r') as file:
-    ibm_watson_url = file.read().strip()
+# Read IBM Watson API key and URL from environment variables
+ibm_watson_api_key = os.environ.get('IBM_WATSON_API_KEY')
+ibm_watson_url = os.environ.get('IBM_WATSON_URL')
 
 # Initialize Watson NLU client
 nlu = NaturalLanguageUnderstandingV1(
@@ -390,8 +394,9 @@ def handle_new_post(username, post_url, unique_id, media_id):
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-def analyze_image(image_url):
-    model = clarifai_app.models.get('demographics')
+def analyze_image(image_url, model_key):
+    clarifai_app = ClarifaiApp(api_key=model_key)
+    model = clarifai_app.public_models.general_model
     image = ClImage(url=image_url)
     response = model.predict([image])
     return response
@@ -409,16 +414,22 @@ def analyze_text(text):
     return response
 
 def comprehensive_analysis(profile_picture_url, bio_text):
-    # Analyze profile picture for gender and age
-    image_analysis = analyze_image(profile_picture_url)
+    # Analyze profile picture for gender, age, and ethnicity
+    gender_analysis = analyze_image(profile_picture_url, gender_model_key)
+    age_analysis = analyze_image(profile_picture_url, age_model_key)
+    ethnicity_analysis = analyze_image(profile_picture_url, ethnicity_model_key)
     
     # Analyze bio text for interests, language, and other attributes
     text_analysis = analyze_text(bio_text)
     
-    # Extract gender and age from image analysis
-    demographics = image_analysis['outputs'][0]['data']['regions'][0]['data']['concepts']
-    gender = next((item['name'] for item in demographics if item['vocab_id'] == 'gender'), 'Unknown')
-    age = next((item['name'] for item in demographics if item['vocab_id'] == 'age_appearance'), 'Unknown')
+    # Extract gender from gender analysis
+    gender = gender_analysis['outputs'][0]['data']['concepts'][0]['name'] if gender_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
+    
+    # Extract age from age analysis
+    age = age_analysis['outputs'][0]['data']['concepts'][0]['name'] if age_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
+    
+    # Extract ethnicity from ethnicity analysis
+    ethnicity = ethnicity_analysis['outputs'][0]['data']['concepts'][0]['name'] if ethnicity_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
     
     # Extract language and other attributes from text analysis
     language = text_analysis.get('language', 'unknown')
@@ -428,6 +439,7 @@ def comprehensive_analysis(profile_picture_url, bio_text):
     return {
         'gender': gender,
         'age': age,
+        'ethnicity': ethnicity,
         'language': language,
         'categories': categories,
         'keywords': keywords
