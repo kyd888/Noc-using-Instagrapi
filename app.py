@@ -57,7 +57,7 @@ ibm_watson_url = os.environ.get('IBM_WATSON_URL')
 # Initialize Watson NLU client
 nlu = NaturalLanguageUnderstandingV1(
     version='2021-08-01',
-    iam_apikey=ibm_watson_api_key,
+    apikey=ibm_watson_api_key,
     url=ibm_watson_url
 )
 
