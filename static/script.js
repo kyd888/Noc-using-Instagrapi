@@ -1,6 +1,9 @@
 $(document).ready(function() {
     let monitoring = false;
 
+    // Initialize WebSocket connection
+    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
     checkSavedSession();
 
     function checkSavedSession() {
@@ -12,6 +15,9 @@ $(document).ready(function() {
                 $('#profile-username').text(response.username);
                 $('#login-form').hide();
                 $('#continue-session-section').show();
+            } else {
+                $('#continue-session-section').hide();
+                $('#login-form').show();
             }
         });
     }
@@ -91,7 +97,7 @@ $(document).ready(function() {
             setTimeout(function() {
                 $.get('/get_post_urls', function(data) {
                     updateCommentersInterestsList(data.commenters_interests);
-                    $('#countdown').text(${data.seconds_until_next_cycle} seconds until next monitoring cycle);
+                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
 
                 fetchCommentersInterests();
@@ -103,8 +109,14 @@ $(document).ready(function() {
         $('#commenters-interests-list').empty();
         for (let commenter in data) {
             const interests = data[commenter];
-            const commenterElement = <h3>${commenter}</h3><ul>${interests.map(interest => <li>${interest[0]}: ${interest[1]}</li>).join('')}</ul>;
+            const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
             $('#commenters-interests-list').append(commenterElement);
         }
     }
+
+    // Listen for new interests via WebSocket
+    socket.on('new_interests', function(data) {
+        const commenterElement = `<h3>${data.commenter}</h3><ul>${data.interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
+        $('#commenters-interests-list').append(commenterElement);
+    });
 });
