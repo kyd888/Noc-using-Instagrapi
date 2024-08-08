@@ -47,9 +47,9 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 # Read Clarifai API keys from environment variables
-gender_model_key = os.environ.get('Key CLARIFAI_GENDER_API_KEY')
-age_model_key = os.environ.get('Key CLARIFAI_AGE_API_KEY')
-ethnicity_model_key = os.environ.get('Key CLARIFAI_ETHNICITY_API_KEY')
+gender_model_key = os.environ.get('KeyCLARIFAI_GENDER_API_KEY')
+age_model_key = os.environ.get('KeyCLARIFAI_AGE_API_KEY')
+ethnicity_model_key = os.environ.get('KeyCLARIFAI_ETHNICITY_API_KEY')
 
 # Initialize Clarifai clients for each model
 clarifai_app_gender = ClarifaiApp(api_key=gender_model_key)
