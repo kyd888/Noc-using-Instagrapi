@@ -16,6 +16,9 @@ import base64
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
+from clarifai.rest import ClarifaiApp, Image as ClImage
+from ibm_watson import NaturalLanguageUnderstandingV1
+from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, LanguageOptions
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -42,6 +45,16 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
+
+# Initialize Clarifai client
+clarifai_app = ClarifaiApp(api_key=os.environ.get('CLARIFAI_API_KEY'))
+
+# Initialize Watson NLU client
+nlu = NaturalLanguageUnderstandingV1(
+    version='2021-08-01',
+    iam_apikey=os.environ.get('IBM_WATSON_API_KEY'),
+    url=os.environ.get('IBM_WATSON_URL')
+)
 
 @app.route('/')
 def index():
@@ -351,69 +364,67 @@ def handle_new_post(username, post_url, unique_id, media_id):
         if username not in comments_data:
             comments_data[username] = []
         comments_data[username].extend(new_comments)  # Append new comments
-        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
+        print(f"Stored new comments for post {unique_id}: {new_comments}")
+
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(new_csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
-        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
 
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
-                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                interests = analyze_interests(captions, images)
-                profile_data['interests'] = interests
+            if profile_data:
+                profile_picture_url = profile_data['profile_picture_url']
+                bio_text = profile_data['biography']
+                analysis_result = comprehensive_analysis(profile_picture_url, bio_text)
+                commenters_interests[commenter_username] = analysis_result
+                print(f"Profile analysis for {commenter_username}: {analysis_result}")
 
-                commenters_interests[commenter_username] = interests
-                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-                
-                # Clear large variables to free up memory
-                del captions, images, profile_data, interests
-            else:
-                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-def analyze_interests(captions, images):
-    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
+def analyze_image(image_url):
+    model = clarifai_app.models.get('demographics')
+    image = ClImage(url=image_url)
+    response = model.predict([image])
+    return response
 
-    interests = {label: 0 for label in candidate_labels}
+def analyze_text(text):
+    response = nlu.analyze(
+        text=text,
+        features=Features(
+            entities=EntitiesOptions(),
+            keywords=KeywordsOptions(),
+            categories=CategoriesOptions(),
+            language=LanguageOptions()
+        )
+    ).get_result()
+    return response
 
-    print(f"Analyzing text interests (App Version: {app_version})")
-    for caption in captions:
-        if not caption:
-            continue
-        try:
-            response = requests.post(
-                "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
-                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-                json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
-            )
-            result = response.json()
-            for label, score in zip(result['labels'], result['scores']):
-                interests[label] += score
-        except Exception as e:
-            print(f"Error analyzing caption: {caption} with error: {e}")
-
-    print(f"Analyzing image interests (App Version: {app_version})")
-    for image_url in images:
-        try:
-            response = requests.post(
-                "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
-                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-                json={"inputs": image_url}
-            )
-            result = response.json()
-            for res in result:
-                if res['label'] in candidate_labels:
-                    interests[res['label']] += res['score']
-        except Exception as e:
-            print(f"Error analyzing image: {image_url} with error: {e}")
-
-    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
-    return sorted_interests
+def comprehensive_analysis(profile_picture_url, bio_text):
+    # Analyze profile picture for gender and age
+    image_analysis = analyze_image(profile_picture_url)
+    
+    # Analyze bio text for interests, language, and other attributes
+    text_analysis = analyze_text(bio_text)
+    
+    # Extract gender and age from image analysis
+    demographics = image_analysis['outputs'][0]['data']['regions'][0]['data']['concepts']
+    gender = next((item['name'] for item in demographics if item['vocab_id'] == 'gender'), 'Unknown')
+    age = next((item['name'] for item in demographics if item['vocab_id'] == 'age_appearance'), 'Unknown')
+    
+    # Extract language and other attributes from text analysis
+    language = text_analysis['language']
+    categories = text_analysis['categories']
+    keywords = text_analysis['keywords']
+    
+    return {
+        'gender': gender,
+        'age': age,
+        'language': language,
+        'categories': categories,
+        'keywords': keywords
+    }
 
 def fetch_instagram_profile(username):
     try:
@@ -424,6 +435,7 @@ def fetch_instagram_profile(username):
             'username': user_info.username,
             'full_name': user_info.full_name,
             'biography': user_info.biography,
+            'profile_picture_url': user_info.profile_pic_url,  # Added profile picture URL
             'media_count': user_info.media_count,
             'follower_count': user_info.follower_count,
             'following_count': user_info.following_count,
@@ -449,6 +461,10 @@ def fetch_instagram_profile(username):
             }
             profile_data['posts'].append(post)
 
+        # Enhanced analysis
+        profile_data['interests'] = extract_interests(user_info.biography, profile_data['posts'])
+        profile_data['age_estimate'] = estimate_age(user_info.biography, profile_data['posts'])
+
         return profile_data
     except JSONDecodeError as e:
         print(f"JSONDecodeError: {e} while fetching data for {username}")
@@ -459,6 +475,29 @@ def fetch_instagram_profile(username):
     except Exception as e:
         print(f"Unexpected error: {e} while fetching data for {username}")
         return None
+
+def extract_interests(biography, posts):
+    candidate_labels = ["music", "travel", "food", "fitness", "gaming", "lifestyle", "technology", "fashion", "sports", "movies", "books", "art"]
+    interests = {label: 0 for label in candidate_labels}
+
+    text_data = [biography] + [post['caption'] for post in posts if post['caption']]
+    for text in text_data:
+        if not text:
+            continue
+        try:
+            result = nlp(text, candidate_labels)
+            for label, score in zip(result['labels'], result['scores']):
+                interests[label] += score
+        except Exception as e:
+            print(f"Error analyzing text: {text} with error: {e}")
+
+    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    return sorted_interests
+
+def estimate_age(biography, posts):
+    # Implement age estimation logic here (e.g., analyzing language style, references to historical events, or profile picture analysis)
+    # This is a placeholder function, you can implement a more sophisticated logic or use an external API
+    return "Unknown"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
