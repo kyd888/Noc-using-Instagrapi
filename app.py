@@ -16,7 +16,7 @@ import base64
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
-from clarifai.rest import ClarifaiApp, Image as ClImage
+from clarifai.client.workflow import Workflow
 from ibm_watson import NaturalLanguageUnderstandingV1
 from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
 
@@ -47,14 +47,8 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
 # Read Clarifai API keys from environment variables
-gender_model_key = os.environ.get('KeyCLARIFAI_GENDER_API_KEY')
-age_model_key = os.environ.get('KeyCLARIFAI_AGE_API_KEY')
-ethnicity_model_key = os.environ.get('KeyCLARIFAI_ETHNICITY_API_KEY')
-
-# Initialize Clarifai clients for each model
-clarifai_app_gender = ClarifaiApp(api_key=gender_model_key)
-clarifai_app_age = ClarifaiApp(api_key=age_model_key)
-clarifai_app_ethnicity = ClarifaiApp(api_key=ethnicity_model_key)
+clarifai_pat = os.environ.get('CLARIFAI_PAT')  # Personal Access Token
+clarifai_workflow_url = os.environ.get('CLARIFAI_WORKFLOW_URL')  # Workflow URL
 
 # Read IBM Watson API key and URL from environment variables
 ibm_watson_api_key = os.environ.get('IBM_WATSON_API_KEY')
@@ -296,7 +290,7 @@ def get_comments(media_id, count=10):  # Fetch 10 comments each cycle
                 (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
                 for comment in comments
             ]
-            print(f"Fetched {len(comments_data)} comments for media ID {media_id} (App Version: {app_version})")
+            print(f"Fetched {lencomments_data)} comments for media ID {media_id} (App Version: {app_version})")
             return comments_data
         else:
             print(f"No comments found for media ID {media_id} (App Version: {app_version})")
@@ -394,12 +388,13 @@ def handle_new_post(username, post_url, unique_id, media_id):
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-def analyze_image(image_url, model_key):
-    clarifai_app = ClarifaiApp(api_key=model_key)
-    model = clarifai_app.public_models.general_model
-    image = ClImage(url=image_url)
-    response = model.predict([image])
-    return response
+def analyze_image(image_url):
+    # Using the workflow URL and PAT for the image classification workflow
+    workflow = Workflow(
+        url=clarifai_workflow_url, pat=clarifai_pat
+    )
+    result = workflow.predict_by_url(image_url, input_type="image")
+    return result
 
 def analyze_text(text):
     response = nlu.analyze(
@@ -415,21 +410,15 @@ def analyze_text(text):
 
 def comprehensive_analysis(profile_picture_url, bio_text):
     # Analyze profile picture for gender, age, and ethnicity
-    gender_analysis = analyze_image(profile_picture_url, gender_model_key)
-    age_analysis = analyze_image(profile_picture_url, age_model_key)
-    ethnicity_analysis = analyze_image(profile_picture_url, ethnicity_model_key)
+    image_analysis = analyze_image(profile_picture_url)
     
     # Analyze bio text for interests, language, and other attributes
     text_analysis = analyze_text(bio_text)
     
-    # Extract gender from gender analysis
-    gender = gender_analysis['outputs'][0]['data']['concepts'][0]['name'] if gender_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
-    
-    # Extract age from age analysis
-    age = age_analysis['outputs'][0]['data']['concepts'][0]['name'] if age_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
-    
-    # Extract ethnicity from ethnicity analysis
-    ethnicity = ethnicity_analysis['outputs'][0]['data']['concepts'][0]['name'] if ethnicity_analysis['outputs'][0]['data']['concepts'] else 'Unknown'
+    # Extract gender, age, and ethnicity from image analysis
+    gender = image_analysis.results[0].outputs[0].data['gender'] if 'gender' in image_analysis.results[0].outputs[0].data else 'Unknown'
+    age = image_analysis.results[0].outputs[0].data['age'] if 'age' in image_analysis.results[0].outputs[0].data else 'Unknown'
+    ethnicity = image_analysis.results[0].outputs[0].data['ethnicity'] if 'ethnicity' in image_analysis.results[0].outputs[0].data else 'Unknown'
     
     # Extract language and other attributes from text analysis
     language = text_analysis.get('language', 'unknown')
