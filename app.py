@@ -385,26 +385,32 @@ def analyze_interests(captions, images):
     for caption in captions:
         if not caption:
             continue
-        response = requests.post(
-            "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
-            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-            json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
-        )
-        result = response.json()
-        for label, score in zip(result['labels'], result['scores']):
-            interests[label] += score
+        try:
+            response = requests.post(
+                "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+                json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
+            )
+            result = response.json()
+            for label, score in zip(result['labels'], result['scores']):
+                interests[label] += score
+        except Exception as e:
+            print(f"Error analyzing caption: {caption} with error: {e}")
 
     print(f"Analyzing image interests (App Version: {app_version})")
     for image_url in images:
-        response = requests.post(
-            "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
-            headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-            json={"inputs": image_url}
-        )
-        result = response.json()
-        for res in result:
-            if res['label'] in candidate_labels:
-                interests[res['label']] += res['score']
+        try:
+            response = requests.post(
+                "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
+                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+                json={"inputs": image_url}
+            )
+            result = response.json()
+            for res in result:
+                if res['label'] in candidate_labels:
+                    interests[res['label']] += res['score']
+        except Exception as e:
+            print(f"Error analyzing image: {image_url} with error: {e}")
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
@@ -429,7 +435,7 @@ def fetch_instagram_profile(username):
             try:
                 media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
             except (IndexError, AttributeError) as e:
-                print(f"Error processing media post: {e}")
+                print(f"Error processing media post for {username}: {e}")
                 continue  # Skip this media post if there's an error
 
             post = {
@@ -444,8 +450,14 @@ def fetch_instagram_profile(username):
             profile_data['posts'].append(post)
 
         return profile_data
+    except JSONDecodeError as e:
+        print(f"JSONDecodeError: {e} while fetching data for {username}")
+        return None
+    except ClientError as e:
+        print(f"ClientError: {e} while fetching data for {username}")
+        return None
     except Exception as e:
-        print(f"An error occurred while fetching data for {username}: {e}")
+        print(f"Unexpected error: {e} while fetching data for {username}")
         return None
 
 if __name__ == '__main__':
