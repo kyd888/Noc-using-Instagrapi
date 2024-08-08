@@ -18,7 +18,10 @@ from PIL import Image
 from json import JSONDecodeError
 from clarifai.rest import ClarifaiApp, Image as ClImage
 from ibm_watson import NaturalLanguageUnderstandingV1
-from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, LanguageOptions
+from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -52,8 +55,8 @@ clarifai_app = ClarifaiApp(api_key=os.environ.get('CLARIFAI_API_KEY'))
 # Initialize Watson NLU client
 nlu = NaturalLanguageUnderstandingV1(
     version='2021-08-01',
-    iam_apikey=os.environ.get('IBM_WATSON_API_KEY'),
-    url=os.environ.get('IBM_WATSON_URL')
+    iam_apikey=os.getenv('IBM_WATSON_API_KEY'),
+    url=os.getenv('IBM_WATSON_URL')
 )
 
 @app.route('/')
@@ -396,7 +399,7 @@ def analyze_text(text):
             entities=EntitiesOptions(),
             keywords=KeywordsOptions(),
             categories=CategoriesOptions(),
-            language=LanguageOptions()
+            sentiment=SentimentOptions()  # Added sentiment analysis as an example
         )
     ).get_result()
     return response
@@ -414,7 +417,7 @@ def comprehensive_analysis(profile_picture_url, bio_text):
     age = next((item['name'] for item in demographics if item['vocab_id'] == 'age_appearance'), 'Unknown')
     
     # Extract language and other attributes from text analysis
-    language = text_analysis['language']
+    language = text_analysis.get('language', 'unknown')
     categories = text_analysis['categories']
     keywords = text_analysis['keywords']
     
