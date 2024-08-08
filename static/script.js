@@ -15,6 +15,9 @@ $(document).ready(function() {
                 $('#profile-username').text(response.username);
                 $('#login-form').hide();
                 $('#continue-session-section').show();
+            } else {
+                $('#continue-session-section').hide();
+                $('#login-form').show();
             }
         });
     }
