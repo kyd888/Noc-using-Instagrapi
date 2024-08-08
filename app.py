@@ -16,11 +16,9 @@ import base64
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
-from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
-socketio = SocketIO(app)
 
 # Version number
 app_version = "1.1.6"
@@ -370,12 +368,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
                 commenters_interests[commenter_username] = interests
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-
-                # Emit the new interests to the client
-                socketio.emit('new_interests', {
-                    'commenter': commenter_username,
-                    'interests': interests
-                })
                 
                 # Clear large variables to free up memory
                 del captions, images, profile_data, interests
@@ -470,5 +462,4 @@ def fetch_instagram_profile(username):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    socketio.run(app, host='0.0.0.0', port=port)
-
+    app.run(host='0.0.0.0', port=port)
