@@ -104,27 +104,29 @@ $(document).ready(function() {
     function fetchCommentersInterests() {
         if (monitoring) {
             console.log("Fetching commenters' interests...");
-            setTimeout(function() {
-                $.get('/get_post_urls', function(data) {
-                    updateCommentersInterestsList(data.commenters_interests);
-                    $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
-                }).fail(function() {
-                    console.error("Failed to fetch commenters' interests.");
-                });
-
-                fetchCommentersInterests();
-            }, 5000);
+            $.get('/get_post_urls', function(data) {
+                updateCommentersInterestsList(data.commenters_interests);
+                $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
+                if (monitoring) {
+                    setTimeout(fetchCommentersInterests, 5000);  // Keep polling every 5 seconds
+                }
+            }).fail(function() {
+                console.error("Failed to fetch commenters' interests.");
+                if (monitoring) {
+                    setTimeout(fetchCommentersInterests, 5000);  // Retry after 5 seconds
+                }
+            });
         }
     }
 
     function updateCommentersInterestsList(data) {
+        console.log("Updating commenters' interests list...");
         $('#commenters-interests-list').empty();
         for (let commenter in data) {
             const interests = data[commenter];
             const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
             $('#commenters-interests-list').append(commenterElement);
         }
-        console.log("Updated commenters' interests list.");
     }
 });
 
