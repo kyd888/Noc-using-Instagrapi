@@ -9,4 +9,4 @@ Pillow>=8.1.1
 openai==0.27.0
 Werkzeug==2.2.2
 clarifai==2.6.2
-ibm-watson==5.2.3
+langdetect==1.0.9
