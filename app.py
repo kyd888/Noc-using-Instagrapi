@@ -162,6 +162,9 @@ def login_with_retries(client, username, password, retries=5, initial_delay=10):
                 print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
                 time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
+            elif 'checkpoint_required' in str(e):
+                print(f"Instagram is asking for verification. Please complete the checkpoint challenge in your Instagram account.")
+                raise e
             else:
                 raise e
     raise Exception("Maximum retries reached for login")
@@ -223,6 +226,9 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
                 print(f"Rate limit hit. Retrying in {delay} seconds. (App Version: {app_version})")
                 time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
+            elif 'checkpoint_required' in str(e):
+                print(f"Instagram is asking for verification. Please complete the checkpoint challenge in your Instagram account.")
+                raise e
             else:
                 raise e
         except requests.exceptions.RequestException as e:
@@ -311,6 +317,7 @@ def post_monitoring_loop(user_id, username):
 
     while monitoring.get(username, False):
         try:
+            print(f"Starting cycle {cycle_count + 1} for {username}.")
             latest_post, post_url, unique_id = scan_for_new_post(user_id, last_post_id, username)
             if latest_post:
                 last_post_id = latest_post.pk
@@ -351,6 +358,7 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
+    print(f"Handling new post for {username} with unique_id {unique_id}")
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
@@ -442,6 +450,7 @@ def comprehensive_analysis(profile_picture_url, bio_text):
 
 def fetch_instagram_profile(username):
     try:
+        print(f"Fetching Instagram profile for {username}")
         user_info = client.user_info_by_username(username)
         user_id = user_info.pk
 
