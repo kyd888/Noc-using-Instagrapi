@@ -449,7 +449,7 @@ def fetch_instagram_profile(username):
             'username': user_info.username,
             'full_name': user_info.full_name,
             'biography': user_info.biography,
-            'profile_picture_url': user_info.profile_pic_url,  # Added profile picture URL
+            'profile_picture_url': user_info.profile_pic_url,
             'media_count': user_info.media_count,
             'follower_count': user_info.follower_count,
             'following_count': user_info.following_count,
@@ -462,7 +462,7 @@ def fetch_instagram_profile(username):
                 media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
             except (IndexError, AttributeError) as e:
                 print(f"Error processing media post for {username}: {e}")
-                continue  # Skip this media post if there's an error
+                continue
 
             post = {
                 'id': media.pk,
@@ -476,12 +476,16 @@ def fetch_instagram_profile(username):
             profile_data['posts'].append(post)
 
         return profile_data
+
     except JSONDecodeError as e:
         print(f"JSONDecodeError: {e} while fetching data for {username}")
+        print(f"Response content: {response.content.decode('utf-8', errors='ignore')}")
         return None
+
     except ClientError as e:
         print(f"ClientError: {e} while fetching data for {username}")
         return None
+
     except Exception as e:
         print(f"Unexpected error: {e} while fetching data for {username}")
         return None
