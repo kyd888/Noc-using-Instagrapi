@@ -16,7 +16,7 @@ import base64
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
-from clarifai.client.workflow import Workflow
+from clarifai.rest import ClarifaiApp, Image as ClImage
 from ibm_watson import NaturalLanguageUnderstandingV1
 from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
 
@@ -390,11 +390,11 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
 def analyze_image(image_url):
     # Using the workflow URL and PAT for the image classification workflow
-    workflow = Workflow(
-        url=clarifai_workflow_url, pat=clarifai_pat
-    )
-    result = workflow.predict_by_url(image_url, input_type="image")
-    return result
+    clarifai_app = ClarifaiApp(api_key=clarifai_pat)
+    model = clarifai_app.public_models.general_model
+    image = ClImage(url=image_url)
+    response = model.predict([image])
+    return response
 
 def analyze_text(text):
     response = nlu.analyze(
@@ -416,9 +416,9 @@ def comprehensive_analysis(profile_picture_url, bio_text):
     text_analysis = analyze_text(bio_text)
     
     # Extract gender, age, and ethnicity from image analysis
-    gender = image_analysis.results[0].outputs[0].data['gender'] if 'gender' in image_analysis.results[0].outputs[0].data else 'Unknown'
-    age = image_analysis.results[0].outputs[0].data['age'] if 'age' in image_analysis.results[0].outputs[0].data else 'Unknown'
-    ethnicity = image_analysis.results[0].outputs[0].data['ethnicity'] if 'ethnicity' in image_analysis.results[0].outputs[0].data else 'Unknown'
+    gender = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'gender' in image_analysis['outputs'][0]['data'] else 'Unknown'
+    age = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'age' in image_analysis['outputs'][0]['data'] else 'Unknown'
+    ethnicity = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'ethnicity' in image_analysis['outputs'][0]['data'] else 'Unknown'
     
     # Extract language and other attributes from text analysis
     language = text_analysis.get('language', 'unknown')
@@ -493,9 +493,16 @@ def extract_interests(biography, posts):
         if not text:
             continue
         try:
-            result = nlp(text, candidate_labels)
-            for label, score in zip(result['labels'], result['scores']):
-                interests[label] += score
+            result = nlu.analyze(
+                text=text,
+                features=Features(
+                    keywords=KeywordsOptions(),
+                    categories=CategoriesOptions()
+                )
+            ).get_result()
+            for label in candidate_labels:
+                if label in result['categories']:
+                    interests[label] += 1
         except Exception as e:
             print(f"Error analyzing text: {text} with error: {e}")
 
