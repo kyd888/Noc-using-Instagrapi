@@ -290,7 +290,7 @@ def get_comments(media_id, count=10):  # Fetch 10 comments each cycle
                 (comment.user.username, comment.text, comment.created_at if hasattr(comment, 'created_at') else 'N/A')
                 for comment in comments
             ]
-            print(f"Fetched {lencomments_data)} comments for media ID {media_id} (App Version: {app_version})")
+            print(f"Fetched {len(comments_data)} comments for media ID {media_id} (App Version: {app_version})")
             return comments_data
         else:
             print(f"No comments found for media ID {media_id} (App Version: {app_version})")
