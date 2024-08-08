@@ -1,6 +1,9 @@
 $(document).ready(function() {
     let monitoring = false;
 
+    // Initialize WebSocket connection
+    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
     checkSavedSession();
 
     function checkSavedSession() {
@@ -107,4 +110,10 @@ $(document).ready(function() {
             $('#commenters-interests-list').append(commenterElement);
         }
     }
+
+    // Listen for new interests via WebSocket
+    socket.on('new_interests', function(data) {
+        const commenterElement = `<h3>${data.commenter}</h3><ul>${data.interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
+        $('#commenters-interests-list').append(commenterElement);
+    });
 });
