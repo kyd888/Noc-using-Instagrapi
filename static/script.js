@@ -4,19 +4,26 @@ $(document).ready(function() {
     checkSavedSession();
 
     function checkSavedSession() {
+        console.log("Checking for saved session...");
         $.get('/check_saved_session', function(response) {
             if (response.has_saved_session) {
+                console.log("Saved session found.");
                 if (response.profile_pic_base64) {
                     $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
                 }
                 $('#profile-username').text(response.username);
                 $('#login-form').hide();
                 $('#continue-session-section').show();
+            } else {
+                console.log("No saved session found.");
             }
+        }).fail(function() {
+            console.error("Failed to check for saved session.");
         });
     }
 
     $('#continue-session').click(function() {
+        console.log("Continuing saved session...");
         $.post('/continue_session', function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
@@ -24,6 +31,8 @@ $(document).ready(function() {
                 $('#main-content').show();
                 fetchCommentersInterests();
             }
+        }).fail(function() {
+            console.error("Failed to continue session.");
         });
     });
 
@@ -36,6 +45,7 @@ $(document).ready(function() {
         event.preventDefault();
         const $loginButton = $(this).find('button[type="submit"]');
         $loginButton.text('Loading...').prop('disabled', true);
+        console.log("Logging in...");
         $.post('/login', $(this).serialize(), function(response) {
             alert(response.status);
             $loginButton.text('Login').prop('disabled', false);
@@ -45,6 +55,7 @@ $(document).ready(function() {
                 fetchCommentersInterests();
             }
         }).fail(function() {
+            console.error("Failed to login.");
             $loginButton.text('Login').prop('disabled', false);
         });
     });
@@ -55,6 +66,7 @@ $(document).ready(function() {
             const $startButton = $('#start-monitoring');
             $startButton.text('Loading...').prop('disabled', true);
             const usernames = $('#target_usernames').val().split(',').map(name => name.trim());
+            console.log("Starting monitoring for usernames:", usernames);
             $.post('/start_monitoring', { target_usernames: usernames.join(',') }, function(response) {
                 alert(response.status);
                 if (response.status === 'Monitoring started') {
@@ -66,6 +78,7 @@ $(document).ready(function() {
                     $startButton.text('Start Monitoring').prop('disabled', false);
                 }
             }).fail(function() {
+                console.error("Failed to start monitoring.");
                 $startButton.text('Start Monitoring').prop('disabled', false);
             });
         }
@@ -75,12 +88,14 @@ $(document).ready(function() {
         if (monitoring) {
             const $stopButton = $(this);
             $stopButton.text('Loading...').prop('disabled', true);
+            console.log("Stopping monitoring...");
             $.post('/stop_monitoring', function(response) {
                 alert(response.status);
                 monitoring = false;
                 $stopButton.text('Stop Monitoring').hide();
                 $('#start-monitoring').show().text('Start Monitoring').prop('disabled', false);
             }).fail(function() {
+                console.error("Failed to stop monitoring.");
                 $stopButton.text('Stop Monitoring').prop('disabled', false);
             });
         }
@@ -88,10 +103,13 @@ $(document).ready(function() {
 
     function fetchCommentersInterests() {
         if (monitoring) {
+            console.log("Fetching commenters' interests...");
             setTimeout(function() {
                 $.get('/get_post_urls', function(data) {
                     updateCommentersInterestsList(data.commenters_interests);
                     $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
+                }).fail(function() {
+                    console.error("Failed to fetch commenters' interests.");
                 });
 
                 fetchCommentersInterests();
@@ -106,5 +124,7 @@ $(document).ready(function() {
             const commenterElement = `<h3>${commenter}</h3><ul>${interests.map(interest => `<li>${interest[0]}: ${interest[1]}</li>`).join('')}</ul>`;
             $('#commenters-interests-list').append(commenterElement);
         }
+        console.log("Updated commenters' interests list.");
     }
 });
+
