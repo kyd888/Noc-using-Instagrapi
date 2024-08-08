@@ -17,9 +17,7 @@ from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
 from clarifai.rest import ClarifaiApp, Image as ClImage
-from ibm_watson import NaturalLanguageUnderstandingV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions, CategoriesOptions, SentimentOptions
+from langdetect import detect
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
@@ -50,18 +48,6 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your Op
 # Read Clarifai API keys from environment variables
 clarifai_pat = os.environ.get('CLARIFAI_PAT')  # Personal Access Token
 clarifai_workflow_url = os.environ.get('CLARIFAI_WORKFLOW_URL')  # Workflow URL
-
-# Read IBM Watson API key and URL from environment variables
-ibm_watson_api_key = os.environ.get('IBM_WATSON_API_KEY')
-ibm_watson_url = os.environ.get('IBM_WATSON_URL')
-
-# Initialize Watson NLU client
-authenticator = IAMAuthenticator(ibm_watson_api_key)
-nlu = NaturalLanguageUnderstandingV1(
-    version='2021-08-01',
-    authenticator=authenticator
-)
-nlu.set_service_url(ibm_watson_url)
 
 @app.route('/')
 def index():
@@ -399,16 +385,22 @@ def analyze_image(image_url):
     return response
 
 def analyze_text(text):
-    response = nlu.analyze(
-        text=text,
-        features=Features(
-            entities=EntitiesOptions(),
-            keywords=KeywordsOptions(),
-            categories=CategoriesOptions(),
-            sentiment=SentimentOptions()  # Added sentiment analysis as an example
-        )
-    ).get_result()
-    return response
+    # Detect language
+    try:
+        language = detect(text)
+    except Exception as e:
+        language = "unknown"
+        print(f"Language detection failed: {e}")
+    
+    # Placeholder for more advanced text analysis
+    categories = ["music", "travel", "food", "fitness", "gaming", "lifestyle", "technology", "fashion", "sports", "movies", "books", "art"]
+    keywords = text.split()  # Naive keyword extraction
+    
+    return {
+        'language': language,
+        'categories': categories,
+        'keywords': keywords
+    }
 
 def comprehensive_analysis(profile_picture_url, bio_text):
     # Analyze profile picture for gender, age, and ethnicity
@@ -494,19 +486,9 @@ def extract_interests(biography, posts):
     for text in text_data:
         if not text:
             continue
-        try:
-            result = nlu.analyze(
-                text=text,
-                features=Features(
-                    keywords=KeywordsOptions(),
-                    categories=CategoriesOptions()
-                )
-            ).get_result()
-            for label in candidate_labels:
-                if label in result['categories']:
-                    interests[label] += 1
-        except Exception as e:
-            print(f"Error analyzing text: {text} with error: {e}")
+        for label in candidate_labels:
+            if label in text.lower():
+                interests[label] += 1
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
