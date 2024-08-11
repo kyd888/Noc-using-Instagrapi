@@ -82,14 +82,19 @@ def continue_session():
     global client, s3, bucket_name
     saved_session = session.get('ig_session')
     if not saved_session:
+        print("No saved session available.")
         return jsonify({'status': 'No saved session available'}), 403
+    
     try:
+        print("Restoring session from saved data...")
         client = Client()
         client.set_settings(saved_session)
         client.login_by_sessionid(client.sessionid)
         session['logged_in'] = True
+        print("Session restored successfully.")
         return jsonify({'status': 'Session restored successfully'})
     except Exception as e:
+        print(f"Error restoring session: {str(e)}")
         return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
 
 @app.route('/login', methods=['POST'])
