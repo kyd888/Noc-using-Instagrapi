@@ -359,9 +359,20 @@ def scan_for_new_post(user_id, last_post_id, username):
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
     print(f"Handling new post for {username} with unique_id {unique_id}")
-    new_comments = get_comments(media_id, 10)  # Get 10 new comments
-    new_comments = [c for c in new_comments if c[0] != username]
-    if new_comments:
+    
+    try:
+        new_comments = get_comments(media_id, 10)  # Get 10 new comments
+        print(f"Fetched comments for media ID {media_id}: {new_comments}")
+
+        if not new_comments:
+            print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+            return
+        
+        new_comments = [c for c in new_comments if c[0] != username]
+        if not new_comments:
+            print(f"No valid new comments found for post {unique_id}.")
+            return
+        
         if username not in comments_data:
             comments_data[username] = []
         comments_data[username].extend(new_comments)  # Append new comments
@@ -373,23 +384,25 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
         for comment in new_comments:
             commenter_username = comment[0]
+            print(f"Fetching profile data for commenter: {commenter_username}")
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data:
-                print(f"Analyzing profile picture and bio for {commenter_username}")
-                profile_picture_url = profile_data['profile_picture_url']
-                bio_text = profile_data['biography']
+            if not profile_data:
+                print(f"Failed to fetch profile data for commenter: {commenter_username}")
+                continue
 
-                print(f"Profile picture URL: {profile_picture_url}")
-                print(f"Bio text: {bio_text}")
+            print(f"Profile data fetched for {commenter_username}: {profile_data}")
+            profile_picture_url = profile_data['profile_picture_url']
+            bio_text = profile_data['biography']
 
-                print(f"Starting AI analysis for {commenter_username}")
-                analysis_result = comprehensive_analysis(profile_picture_url, bio_text)
+            print(f"Profile picture URL: {profile_picture_url}, Bio text: {bio_text}")
+            print(f"Starting AI analysis for {commenter_username}")
 
-                print(f"AI analysis result for {commenter_username}: {analysis_result}")
-                commenters_interests[commenter_username] = analysis_result
+            analysis_result = comprehensive_analysis(profile_picture_url, bio_text)
+            print(f"AI analysis result for {commenter_username}: {analysis_result}")
+            commenters_interests[commenter_username] = analysis_result
 
-    else:
-        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
+    except Exception as e:
+        print(f"An error occurred while handling new post for {username}: {e}")
 
 def analyze_image(image_url):
     print(f"Analyzing image at URL: {image_url}")
@@ -421,32 +434,42 @@ def analyze_text(text):
 
 def comprehensive_analysis(profile_picture_url, bio_text):
     print("Starting comprehensive analysis...")
-    # Analyze profile picture for gender, age, and ethnicity
-    image_analysis = analyze_image(profile_picture_url)
-    
-    # Analyze bio text for interests, language, and other attributes
-    text_analysis = analyze_text(bio_text)
-    
-    # Extract gender, age, and ethnicity from image analysis
-    gender = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'gender' in image_analysis['outputs'][0]['data'] else 'Unknown'
-    age = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'age' in image_analysis['outputs'][0]['data'] else 'Unknown'
-    ethnicity = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'ethnicity' in image_analysis['outputs'][0]['data'] else 'Unknown'
-    
-    # Extract language and other attributes from text analysis
-    language = text_analysis.get('language', 'unknown')
-    categories = text_analysis['categories']
-    keywords = text_analysis['keywords']
 
-    result = {
-        'gender': gender,
-        'age': age,
-        'ethnicity': ethnicity,
-        'language': language,
-        'categories': categories,
-        'keywords': keywords
-    }
-    print(f"Comprehensive analysis result: {result}")
-    return result
+    try:
+        # Analyze profile picture for gender, age, and ethnicity
+        print(f"Analyzing profile picture: {profile_picture_url}")
+        image_analysis = analyze_image(profile_picture_url)
+        print(f"Image analysis completed: {image_analysis}")
+
+        # Analyze bio text for interests, language, and other attributes
+        print(f"Analyzing bio text: {bio_text}")
+        text_analysis = analyze_text(bio_text)
+        print(f"Text analysis completed: {text_analysis}")
+
+        # Extract gender, age, and ethnicity from image analysis
+        gender = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'gender' in image_analysis['outputs'][0]['data'] else 'Unknown'
+        age = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'age' in image_analysis['outputs'][0]['data'] else 'Unknown'
+        ethnicity = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'ethnicity' in image_analysis['outputs'][0]['data'] else 'Unknown'
+
+        # Extract language and other attributes from text analysis
+        language = text_analysis.get('language', 'unknown')
+        categories = text_analysis['categories']
+        keywords = text_analysis['keywords']
+
+        result = {
+            'gender': gender,
+            'age': age,
+            'ethnicity': ethnicity,
+            'language': language,
+            'categories': categories,
+            'keywords': keywords
+        }
+        print(f"Comprehensive analysis result: {result}")
+        return result
+
+    except Exception as e:
+        print(f"An error occurred during the comprehensive analysis: {e}")
+        return None
 
 def fetch_instagram_profile(username):
     try:
