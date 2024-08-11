@@ -20,13 +20,23 @@ $(document).ready(function() {
     }
 
     $('#continue-session').click(function() {
+        $('#continue-session').hide();
+        $('#loading-indicator').show();
+
         $.post('/continue_session', function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
-                $('#continue-session-section').hide();
+                $('#loading-indicator').hide();
                 $('#main-content').show();
                 fetchCommentersInterests();
+            } else {
+                $('#loading-indicator').hide();
+                $('#continue-session').show(); // Show the button again if the session restoration fails
             }
+        }).fail(function() {
+            $('#loading-indicator').hide();
+            $('#continue-session').show(); // Show the button again if the session restoration fails
+            alert("An error occurred while continuing the session.");
         });
     });
 
@@ -111,3 +121,4 @@ $(document).ready(function() {
         }
     }
 });
+
