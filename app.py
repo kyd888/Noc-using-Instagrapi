@@ -77,6 +77,7 @@ def check_saved_session():
                 return jsonify({'has_saved_session': False})
     return jsonify({'has_saved_session': False})
 
+
 @app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client, s3, bucket_name
