@@ -94,9 +94,12 @@ def continue_session():
         session['logged_in'] = True
         print("Session restored successfully.")
         return jsonify({'status': 'Session restored successfully'})
+    except ClientError as e:
+        print(f"ClientError occurred while restoring session: {str(e)}")
+        return jsonify({'status': f'ClientError: {str(e)}'}), 500
     except Exception as e:
-        print(f"Error restoring session: {str(e)}")
-        return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
+        print(f"Unexpected error occurred while restoring session: {str(e)}")
+        return jsonify({'status': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
