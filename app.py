@@ -113,24 +113,6 @@ def login():
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
 
-        # Set device settings to simulate an iPhone 12 Pro
-        client.set_device({
-            "manufacturer": "Apple",
-            "model": "iPhone12,3",
-            "device": "d75f3509-4827-4f5e-9431-fd5b60c42305",
-            "app_version": "153.0.0.34.96",
-            "android_version": 29,
-            "android_release": "10",
-            "dpi": "440dpi",
-            "resolution": "1080x2340",
-            "cpu": "apple",
-            "version_code": "222826132",
-            "device_guid": str(uuid.uuid4())
-        })
-
-        # Debugging: Print the device settings
-        print(f"Device settings: {client.device}")
-
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         session['ig_session'] = client.get_settings()
@@ -406,12 +388,16 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
 def analyze_image(image_url):
     print(f"Analyzing image at URL: {image_url}")
-    clarifai_app = ClarifaiApp(api_key=clarifai_pat)
-    model = clarifai_app.public_models.general_model
-    image = ClImage(url=image_url)
-    response = model.predict([image])
-    print(f"Image analysis response: {response}")
-    return response
+    try:
+        clarifai_app = ClarifaiApp(api_key=clarifai_pat)
+        model = clarifai_app.public_models.general_model
+        image = ClImage(url=image_url)
+        response = model.predict([image])
+        print(f"Image analysis response: {response}")
+        return response
+    except Exception as e:
+        print(f"An error occurred during image analysis: {e}")
+        return None
 
 def analyze_text(text):
     print(f"Analyzing text: {text}")
@@ -439,6 +425,9 @@ def comprehensive_analysis(profile_picture_url, bio_text):
         # Analyze profile picture for gender, age, and ethnicity
         print(f"Analyzing profile picture: {profile_picture_url}")
         image_analysis = analyze_image(profile_picture_url)
+        if image_analysis is None:
+            print(f"Image analysis failed for URL: {profile_picture_url}")
+            return None
         print(f"Image analysis completed: {image_analysis}")
 
         # Analyze bio text for interests, language, and other attributes
