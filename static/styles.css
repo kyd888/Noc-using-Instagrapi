@@ -22,14 +22,13 @@ body {
     height: auto;
 }
 
-form, #continue-session-section {
+#continue-session-section {
+    max-width: 400px;
+    margin: auto;
     background: #fff;
-    padding: 50px;
-    margin: 20px auto;
+    padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    width: 100%;
     text-align: center;
 }
 
@@ -52,23 +51,47 @@ form, #continue-session-section {
     font-weight: bold;
 }
 
-.no-border {
-    border: none;
-    padding: 20px 0;
+#buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
 }
 
-.no-border legend {
-    font-size: 1.5em;
-    font-weight: bold;
-    text-align: center;
+button {
     width: 100%;
-    margin-bottom: 10px;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 1em;
+    border: 2px solid black;
+    border-radius: 4px;
+    background-color: black;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
 }
 
-label {
+button:hover {
+    background-color: white;
+    color: black;
+}
+
+#loading-message {
+    text-align: center;
+    font-size: 1.2em;
     font-weight: bold;
-    display: block;
-    margin-top: 10px;
+    margin-top: 20px;
+}
+
+form, #login-form {
+    background: #fff;
+    padding: 50px;
+    margin: 20px auto;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
 }
 
 input[type="text"],
@@ -78,24 +101,6 @@ input[type="password"] {
     margin: 10px 0;
     border: 1px solid #ccc;
     border-radius: 4px;
-}
-
-button {
-    width: calc(100% - 22px);
-    padding: 10px;
-    border: 2px solid black;
-    border-radius: 4px;
-    background-color: black;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-    margin: 5px 0;
-}
-
-button:hover {
-    background-color: white;
-    color: black;
 }
 
 #main-content {
@@ -122,31 +127,6 @@ button:hover {
     justify-content: center;
 }
 
-#left-panel {
-    margin-right: 20px;  /* Add space between the panels */
-}
-
-#right-panel {
-    margin-left: 20px;  /* Add space between the panels */
-}
-
-#monitor-form {
-    width: 80%;
-    max-width: 60%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-#monitor-form label,
-#monitor-form input[type="text"],
-#monitor-form button {
-    width: 90%;
-    max-width: 100%;
-    text-align: left;
-}
-
 h2 {
     text-align: center;
     color: #333;
@@ -167,3 +147,4 @@ h2 {
         padding: 20px;
     }
 }
+
