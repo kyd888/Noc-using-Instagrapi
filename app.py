@@ -79,10 +79,10 @@ def check_saved_session():
 
 
 @app.route('/continue_session', methods=['POST'])
-@app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client, s3, bucket_name
     saved_session = session.get('ig_session')
+    
     if not saved_session:
         print("No saved session available.")
         return jsonify({'status': 'No saved session available'}), 403
@@ -90,43 +90,43 @@ def continue_session():
     try:
         print("Restoring session from saved data...")
         client = Client()
+
+        # Check if the session has all the required data
+        if 'sessionid' not in saved_session:
+            print("Session ID is missing in the saved session data.")
+            return jsonify({'status': 'Session ID is missing in the saved session data'}), 500
         
-        # Log saved session data
-        print("Saved session settings:", saved_session)
-        
-        # Attempt to set the client settings and log any issues
+        # Log the saved session data (be cautious of sensitive data)
+        print("Saved session data:", saved_session)
+
+        # Attempt to set client settings
         try:
             client.set_settings(saved_session)
-            print("Settings applied successfully.")
+            print("Client settings applied successfully.")
         except Exception as e:
-            print(f"Error applying settings: {str(e)}")
-            return jsonify({'status': f"Error applying settings: {str(e)}"}), 500
-
-        # Log the session ID and attempt login
+            print(f"Error setting client settings: {e}")
+            return jsonify({'status': f"Error setting client settings: {e}"}), 500
+        
+        # Attempt to log in using the session ID
         try:
-            print(f"Using session ID: {client.sessionid}")
+            print(f"Attempting login with session ID: {client.sessionid}")
             client.login_by_sessionid(client.sessionid)
-            print("Logged in successfully using session ID.")
+            session['logged_in'] = True
+            print("Session restored and login successful.")
+            return jsonify({'status': 'Session restored successfully'})
         except Exception as e:
-            print(f"Error logging in by session ID: {str(e)}")
-            return jsonify({'status': f"Error logging in by session ID: {str(e)}"}), 500
-
-        session['logged_in'] = True
-        print("Session restored successfully.")
-        return jsonify({'status': 'Session restored successfully'})
+            print(f"Error during login by session ID: {e}")
+            return jsonify({'status': f"Error during login by session ID: {e}"}), 500
     
     except ClientError as e:
-        print(f"ClientError occurred while restoring session: {str(e)}")
-        return jsonify({'status': f'ClientError: {str(e)}'}), 500
+        print(f"ClientError occurred: {e}")
+        return jsonify({'status': f"ClientError: {e}"}), 500
     
     except Exception as e:
-        print(f"Unexpected error occurred while restoring session: {str(e)}")
-        
-        # Capture the stack trace for further investigation
+        print(f"Unexpected error occurred: {e}")
         import traceback
-        traceback.print_exc()
-
-        return jsonify({'status': f'Unexpected error: {str(e)}'}), 500
+        traceback.print_exc()  # Log the stack trace for deeper inspection
+        return jsonify({'status': f"Unexpected error: {e}"}), 500
 
         
 @app.route('/login', methods=['POST'])
