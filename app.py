@@ -89,7 +89,15 @@ def continue_session():
     try:
         print("Restoring session from saved data...")
         client = Client()
+        
+        # Log saved session data for debugging purposes (do not log sensitive info in production)
+        print(f"Saved session settings: {saved_session}")
+
         client.set_settings(saved_session)
+        
+        # Log the session ID that is being used
+        print(f"Using session ID: {client.sessionid}")
+
         client.login_by_sessionid(client.sessionid)
         session['logged_in'] = True
         print("Session restored successfully.")
@@ -99,8 +107,13 @@ def continue_session():
         return jsonify({'status': f'ClientError: {str(e)}'}), 500
     except Exception as e:
         print(f"Unexpected error occurred while restoring session: {str(e)}")
-        return jsonify({'status': f'Unexpected error: {str(e)}'}), 500
+        
+        # Capture the stack trace for further investigation
+        import traceback
+        traceback.print_exc()
 
+        return jsonify({'status': f'Unexpected error: {str(e)}'}), 500
+        
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
