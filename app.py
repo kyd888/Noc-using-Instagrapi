@@ -79,6 +79,7 @@ def check_saved_session():
 
 
 @app.route('/continue_session', methods=['POST'])
+@app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client, s3, bucket_name
     saved_session = session.get('ig_session')
@@ -90,21 +91,34 @@ def continue_session():
         print("Restoring session from saved data...")
         client = Client()
         
-        # Log saved session data for debugging purposes (do not log sensitive info in production)
-        print(f"Saved session settings: {saved_session}")
-
-        client.set_settings(saved_session)
+        # Log saved session data
+        print("Saved session settings:", saved_session)
         
-        # Log the session ID that is being used
-        print(f"Using session ID: {client.sessionid}")
+        # Attempt to set the client settings and log any issues
+        try:
+            client.set_settings(saved_session)
+            print("Settings applied successfully.")
+        except Exception as e:
+            print(f"Error applying settings: {str(e)}")
+            return jsonify({'status': f"Error applying settings: {str(e)}"}), 500
 
-        client.login_by_sessionid(client.sessionid)
+        # Log the session ID and attempt login
+        try:
+            print(f"Using session ID: {client.sessionid}")
+            client.login_by_sessionid(client.sessionid)
+            print("Logged in successfully using session ID.")
+        except Exception as e:
+            print(f"Error logging in by session ID: {str(e)}")
+            return jsonify({'status': f"Error logging in by session ID: {str(e)}"}), 500
+
         session['logged_in'] = True
         print("Session restored successfully.")
         return jsonify({'status': 'Session restored successfully'})
+    
     except ClientError as e:
         print(f"ClientError occurred while restoring session: {str(e)}")
         return jsonify({'status': f'ClientError: {str(e)}'}), 500
+    
     except Exception as e:
         print(f"Unexpected error occurred while restoring session: {str(e)}")
         
@@ -113,6 +127,7 @@ def continue_session():
         traceback.print_exc()
 
         return jsonify({'status': f'Unexpected error: {str(e)}'}), 500
+
         
 @app.route('/login', methods=['POST'])
 def login():
