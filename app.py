@@ -8,7 +8,7 @@ from instagrapi import Client
 from threading import Thread
 import requests
 import boto3
-from io import StringIO, BytesIO
+from io import StringIO
 from botocore.exceptions import NoCredentialsError, ClientError as BotoClientError
 from instagrapi.exceptions import ClientError
 import openai
@@ -16,11 +16,11 @@ import base64
 from datetime import datetime
 from PIL import Image
 from json import JSONDecodeError
-from clarifai.rest import ClarifaiApp, Image as ClImage
-from langdetect import detect
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
+socketio = SocketIO(app)
 
 # Version number
 app_version = "1.1.6"
@@ -44,10 +44,6 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
-
-# Read Clarifai API keys from environment variables
-clarifai_pat = os.environ.get('CLARIFAI_PAT')  # Personal Access Token
-clarifai_workflow_url = os.environ.get('CLARIFAI_WORKFLOW_URL')  # Workflow URL
 
 @app.route('/')
 def index():
@@ -77,58 +73,21 @@ def check_saved_session():
                 return jsonify({'has_saved_session': False})
     return jsonify({'has_saved_session': False})
 
-
 @app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client, s3, bucket_name
     saved_session = session.get('ig_session')
-    
     if not saved_session:
-        print("No saved session available.")
         return jsonify({'status': 'No saved session available'}), 403
-    
     try:
-        print("Restoring session from saved data...")
         client = Client()
-
-        # Check if the session has all the required data
-        if 'sessionid' not in saved_session:
-            print("Session ID is missing in the saved session data.")
-            return jsonify({'status': 'Session ID is missing in the saved session data'}), 500
-        
-        # Log the saved session data (be cautious of sensitive data)
-        print("Saved session data:", saved_session)
-
-        # Attempt to set client settings
-        try:
-            client.set_settings(saved_session)
-            print("Client settings applied successfully.")
-        except Exception as e:
-            print(f"Error setting client settings: {e}")
-            return jsonify({'status': f"Error setting client settings: {e}"}), 500
-        
-        # Attempt to log in using the session ID
-        try:
-            print(f"Attempting login with session ID: {client.sessionid}")
-            client.login_by_sessionid(client.sessionid)
-            session['logged_in'] = True
-            print("Session restored and login successful.")
-            return jsonify({'status': 'Session restored successfully'})
-        except Exception as e:
-            print(f"Error during login by session ID: {e}")
-            return jsonify({'status': f"Error during login by session ID: {e}"}), 500
-    
-    except ClientError as e:
-        print(f"ClientError occurred: {e}")
-        return jsonify({'status': f"ClientError: {e}"}), 500
-    
+        client.set_settings(saved_session)
+        client.login_by_sessionid(client.sessionid)
+        session['logged_in'] = True
+        return jsonify({'status': 'Session restored successfully'})
     except Exception as e:
-        print(f"Unexpected error occurred: {e}")
-        import traceback
-        traceback.print_exc()  # Log the stack trace for deeper inspection
-        return jsonify({'status': f"Unexpected error: {e}"}), 500
+        return jsonify({'status': f'Session restore failed: {str(e)}'}), 500
 
-        
 @app.route('/login', methods=['POST'])
 def login():
     global client, s3, bucket_name
@@ -149,6 +108,24 @@ def login():
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
         client = Client()
+
+        # Set device settings to simulate an iPhone 12 Pro
+        client.set_device({
+            "manufacturer": "Apple",
+            "model": "iPhone12,3",
+            "device": "d75f3509-4827-4f5e-9431-fd5b60c42305",
+            "app_version": "153.0.0.34.96",
+            "android_version": 29,
+            "android_release": "10",
+            "dpi": "440dpi",
+            "resolution": "1080x2340",
+            "cpu": "apple",
+            "version_code": "222826132",
+            "device_guid": str(uuid.uuid4())
+        })
+
+        # Debugging: Print the device settings
+        print(f"Device settings: {client.device}")
 
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
@@ -181,9 +158,6 @@ def login_with_retries(client, username, password, retries=5, initial_delay=10):
                 print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
                 time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
-            elif 'checkpoint_required' in str(e):
-                print(f"Instagram is asking for verification. Please complete the checkpoint challenge in your Instagram account.")
-                raise e
             else:
                 raise e
     raise Exception("Maximum retries reached for login")
@@ -245,9 +219,6 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
                 print(f"Rate limit hit. Retrying in {delay} seconds. (App Version: {app_version})")
                 time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
-            elif 'checkpoint_required' in str(e):
-                print(f"Instagram is asking for verification. Please complete the checkpoint challenge in your Instagram account.")
-                raise e
             else:
                 raise e
         except requests.exceptions.RequestException as e:
@@ -286,7 +257,7 @@ def get_latest_post(user_id):
         if posts:
             print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
         else:
-            print("No posts found. (App Version: {app_version})")
+            print(f"No posts found. (App Version: {app_version})")
         return posts[0] if posts else None
     except JSONDecodeError as e:
         print(f"JSONDecodeError: {e} (App Version: {app_version})")
@@ -336,7 +307,6 @@ def post_monitoring_loop(user_id, username):
 
     while monitoring.get(username, False):
         try:
-            print(f"Starting cycle {cycle_count + 1} for {username}.")
             latest_post, post_url, unique_id = scan_for_new_post(user_id, last_post_id, username)
             if latest_post:
                 last_post_id = latest_post.pk
@@ -355,8 +325,8 @@ def post_monitoring_loop(user_id, username):
                     print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
                     time.sleep(long_break_duration)
                 else:
-                    print(f"Taking a break for {break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    time.sleep(break_duration)
+                    print(f"Taking a break for {break_after_actions // 60} minutes to avoid being flagged. (App Version: {app_version})")
+                    time.sleep(break_after_actions)
                 interaction_count = 0
 
         except Exception as e:
@@ -377,129 +347,95 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
-    print(f"Handling new post for {username} with unique_id {unique_id}")
-    
-    try:
-        new_comments = get_comments(media_id, 10)  # Get 10 new comments
-        print(f"Fetched comments for media ID {media_id}: {new_comments}")
-
-        if not new_comments:
-            print(f"No new comments found for post {unique_id} (App Version: {app_version})")
-            return
-        
-        new_comments = [c for c in new_comments if c[0] != username]
-        if not new_comments:
-            print(f"No valid new comments found for post {unique_id}.")
-            return
-        
+    new_comments = get_comments(media_id, 10)  # Get 10 new comments
+    new_comments = [c for c in new_comments if c[0] != username]
+    if new_comments:
         if username not in comments_data:
             comments_data[username] = []
         comments_data[username].extend(new_comments)  # Append new comments
-        print(f"Stored new comments for post {unique_id}: {new_comments}")
-
+        print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(new_csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
+        print(f"CSV Data: {new_csv_data} (App Version: {app_version})")
 
         for comment in new_comments:
             commenter_username = comment[0]
-            print(f"Fetching profile data for commenter: {commenter_username}")
             profile_data = fetch_instagram_profile(commenter_username)
-            if not profile_data:
-                print(f"Failed to fetch profile data for commenter: {commenter_username}")
-                continue
+            if profile_data and 'posts' in profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
+                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
+                if captions and images:  # Check if captions and images are not None
+                    interests = analyze_interests(captions, images)
+                    profile_data['interests'] = interests
 
-            print(f"Profile data fetched for {commenter_username}: {profile_data}")
-            profile_picture_url = profile_data['profile_picture_url']
-            bio_text = profile_data['biography']
+                    commenters_interests[commenter_username] = interests
+                    print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
 
-            print(f"Profile picture URL: {profile_picture_url}, Bio text: {bio_text}")
-            print(f"Starting AI analysis for {commenter_username}")
+                    # Emit the new interests to the client
+                    socketio.emit('new_interests', {
+                        'commenter': commenter_username,
+                        'interests': interests
+                    })
 
-            analysis_result = comprehensive_analysis(profile_picture_url, bio_text)
-            print(f"AI analysis result for {commenter_username}: {analysis_result}")
-            commenters_interests[commenter_username] = analysis_result
+                    # Clear large variables to free up memory
+                    del captions, images, profile_data, interests
+                else:
+                    print(f"Skipping {commenter_username} due to empty captions or images (App Version: {app_version})")
+            else:
+                print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
+    else:
+        print(f"No new comments found for post {unique_id} (App Version: {app_version})")
 
-    except Exception as e:
-        print(f"An error occurred while handling new post for {username}: {e}")
+def analyze_interests(captions, images):
+    candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
 
-def analyze_image(image_url):
-    print(f"Analyzing image at URL: {image_url}")
-    try:
-        clarifai_app = ClarifaiApp(api_key=clarifai_pat)
-        model = clarifai_app.public_models.general_model
-        image = ClImage(url=image_url)
-        response = model.predict([image])
-        print(f"Image analysis response: {response}")
-        return response
-    except Exception as e:
-        print(f"An error occurred during image analysis: {e}")
-        return None
+    interests = {label: 0 for label in candidate_labels}
 
-def analyze_text(text):
-    print(f"Analyzing text: {text}")
-    try:
-        language = detect(text)
-    except Exception as e:
-        language = "unknown"
-        print(f"Language detection failed: {e}")
+    print(f"Analyzing text interests (App Version: {app_version})")
+    for caption in captions:
+        if not caption:
+            continue
+        try:
+            response = requests.post(
+                "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+                json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
+            )
+            result = response.json()
+            if result and 'labels' in result and 'scores' in result:
+                for label, score in zip(result['labels'], result['scores']):
+                    interests[label] += score
+            else:
+                print(f"Error: Unexpected response format for caption analysis (App Version: {app_version})")
+        except Exception as e:
+            print(f"Error analyzing caption: {caption} with error: {e}")
 
-    # Placeholder for more advanced text analysis
-    categories = ["music", "travel", "food", "fitness", "gaming", "lifestyle", "technology", "fashion", "sports", "movies", "books", "art"]
-    keywords = text.split()  # Naive keyword extraction
-    
-    print(f"Text analysis result: language={language}, categories={categories}, keywords={keywords}")
-    return {
-        'language': language,
-        'categories': categories,
-        'keywords': keywords
-    }
+    print(f"Analyzing image interests (App Version: {app_version})")
+    for image_url in images:
+        if not image_url:
+            continue
+        try:
+            response = requests.post(
+                "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
+                headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
+                json={"inputs": image_url}
+            )
+            result = response.json()
+            if result:
+                for res in result:
+                    if res['label'] in candidate_labels:
+                        interests[res['label']] += res['score']
+            else:
+                print(f"Error: Unexpected response format for image analysis (App Version: {app_version})")
+        except Exception as e:
+            print(f"Error analyzing image: {image_url} with error: {e}")
 
-def comprehensive_analysis(profile_picture_url, bio_text):
-    print("Starting comprehensive analysis...")
-
-    try:
-        # Analyze profile picture for gender, age, and ethnicity
-        print(f"Analyzing profile picture: {profile_picture_url}")
-        image_analysis = analyze_image(profile_picture_url)
-        if image_analysis is None:
-            print(f"Image analysis failed for URL: {profile_picture_url}")
-            return None
-        print(f"Image analysis completed: {image_analysis}")
-
-        # Analyze bio text for interests, language, and other attributes
-        print(f"Analyzing bio text: {bio_text}")
-        text_analysis = analyze_text(bio_text)
-        print(f"Text analysis completed: {text_analysis}")
-
-        # Extract gender, age, and ethnicity from image analysis
-        gender = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'gender' in image_analysis['outputs'][0]['data'] else 'Unknown'
-        age = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'age' in image_analysis['outputs'][0]['data'] else 'Unknown'
-        ethnicity = image_analysis['outputs'][0]['data']['concepts'][0]['name'] if 'ethnicity' in image_analysis['outputs'][0]['data'] else 'Unknown'
-
-        # Extract language and other attributes from text analysis
-        language = text_analysis.get('language', 'unknown')
-        categories = text_analysis['categories']
-        keywords = text_analysis['keywords']
-
-        result = {
-            'gender': gender,
-            'age': age,
-            'ethnicity': ethnicity,
-            'language': language,
-            'categories': categories,
-            'keywords': keywords
-        }
-        print(f"Comprehensive analysis result: {result}")
-        return result
-
-    except Exception as e:
-        print(f"An error occurred during the comprehensive analysis: {e}")
-        return None
+    sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
+    return sorted_interests
 
 def fetch_instagram_profile(username):
     try:
-        print(f"Fetching Instagram profile for {username}")
         user_info = client.user_info_by_username(username)
         user_id = user_info.pk
 
@@ -507,7 +443,6 @@ def fetch_instagram_profile(username):
             'username': user_info.username,
             'full_name': user_info.full_name,
             'biography': user_info.biography,
-            'profile_picture_url': user_info.profile_pic_url,
             'media_count': user_info.media_count,
             'follower_count': user_info.follower_count,
             'following_count': user_info.following_count,
@@ -515,39 +450,36 @@ def fetch_instagram_profile(username):
         }
 
         medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
-        for media in medias:
-            try:
-                media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
-            except (IndexError, AttributeError) as e:
-                print(f"Error processing media post for {username}: {e}")
-                continue
+        if medias:
+            for media in medias:
+                try:
+                    media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
+                except (IndexError, AttributeError) as e:
+                    print(f"Error processing media post for {username}: {e}")
+                    continue  # Skip this media post if there's an error
 
-            post = {
-                'id': media.pk,
-                'caption': media.caption_text,
-                'media_type': media.media_type,
-                'media_url': str(media_url),
-                'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
-                'likes': media.like_count,
-                'comments': media.comment_count
-            }
-            profile_data['posts'].append(post)
+                post = {
+                    'id': media.pk,
+                    'caption': media.caption_text,
+                    'media_type': media.media_type,
+                    'media_url': str(media_url),
+                    'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
+                    'likes': media.like_count,
+                    'comments': media.comment_count
+                }
+                profile_data['posts'].append(post)
 
         return profile_data
-
     except JSONDecodeError as e:
         print(f"JSONDecodeError: {e} while fetching data for {username}")
-        print(f"Response content: {response.content.decode('utf-8', errors='ignore')}")
         return None
-
     except ClientError as e:
         print(f"ClientError: {e} while fetching data for {username}")
         return None
-
     except Exception as e:
         print(f"Unexpected error: {e} while fetching data for {username}")
         return None
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    app.run(host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port)
