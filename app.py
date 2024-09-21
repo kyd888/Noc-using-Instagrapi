@@ -14,12 +14,11 @@ from instagrapi.exceptions import ClientError
 import openai
 import base64
 from datetime import datetime
-from PIL import Image
-from json import JSONDecodeError
 from flask_socketio import SocketIO, emit
 
+# Initialize Flask and SocketIO
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with a secure key
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')
 socketio = SocketIO(app)
 
 # Version number
@@ -45,6 +44,13 @@ next_cycle_time = time.time()  # Initialize next_cycle_time
 # Initialize OpenAI client
 openai.api_key = os.environ.get('OPENAI_API_KEY')  # Ensure you have set your OpenAI API key
 
+# Helper function to add random delays between actions
+def add_delay(min_seconds=10, max_seconds=30):
+    delay = random.uniform(min_seconds, max_seconds)
+    print(f"Adding a delay of {delay:.2f} seconds to avoid being flagged.")
+    time.sleep(delay)
+
+# Avoid frequent logins
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
@@ -55,13 +61,11 @@ def check_saved_session():
     if saved_session:
         profile_pic_url = session.get('profile_pic_url', '')
         username = session.get('ig_username', '')
-        # Fetch the profile picture on the server side
         if profile_pic_url:
             try:
                 response = requests.get(profile_pic_url)
                 response.raise_for_status()
                 profile_pic_data = response.content
-                # Encode the image in base64
                 profile_pic_base64 = base64.b64encode(profile_pic_data).decode('utf-8')
                 return jsonify({
                     'has_saved_session': True,
@@ -103,7 +107,7 @@ def login():
         aws_secret_key = file.read().strip()
     
     aws_region = 'us-east-1'
-    bucket_name = 'noc-user-data1'  # Ensure this bucket exists in your AWS account
+    bucket_name = 'noc-user-data1'
     
     try:
         print(f"Attempting to login with username: {insta_username} (App Version: {app_version})")
@@ -124,15 +128,11 @@ def login():
             "device_guid": str(uuid.uuid4())
         })
 
-        # Debugging: Print the device settings
-        print(f"Device settings: {client.device}")
-
         login_with_retries(client, insta_username, insta_password)
         session['logged_in'] = True
         session['ig_session'] = client.get_settings()
         session['ig_username'] = insta_username
 
-        # Fetch and save the profile picture URL
         profile_info = client.user_info_by_username(insta_username)
         session['profile_pic_url'] = profile_info.profile_pic_url
 
@@ -225,14 +225,6 @@ def retry_with_exponential_backoff(func, retries=5, initial_delay=1):
             print(f"Request failed: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
             delay *= 2  # Exponential backoff
-        except ValueError as e:
-            print(f"JSON decode error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
-            time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
-            delay *= 2  # Exponential backoff
-        except JSONDecodeError as e:
-            print(f"JSONDecodeError: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
-            time.sleep(delay + random.uniform(0, delay / 2))
-            delay *= 2
         except Exception as e:
             print(f"Unexpected error: {e}. Retrying in {delay} seconds. (App Version: {app_version})")
             time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
@@ -257,16 +249,13 @@ def get_latest_post(user_id):
         if posts:
             print(f"Latest post ID: {posts[0].pk} (App Version: {app_version})")
         else:
-            print(f"No posts found. (App Version: {app_version})")
+            print("No posts found. (App Version: {app_version})")
         return posts[0] if posts else None
-    except JSONDecodeError as e:
-        print(f"JSONDecodeError: {e} (App Version: {app_version})")
-        return None
     except Exception as e:
         print(f"Error fetching latest post for user ID {user_id}: {e} (App Version: {app_version})")
         return None
 
-def get_comments(media_id, count=10):  # Fetch 10 comments each cycle
+def get_comments(media_id, count=10):
     try:
         comments = retry_with_exponential_backoff(lambda: client.media_comments(media_id, amount=count))
         if comments:
@@ -314,19 +303,18 @@ def post_monitoring_loop(user_id, username):
                 handle_new_post(username, post_url, unique_id, latest_post.pk)
                 last_refresh_time[username] = time.strftime('%Y-%m-%d %H:%M:%S')
 
+                # Add a random delay after processing a post
+                add_delay(30, 60)  # 30 to 60 seconds delay
+
             sleep_interval = random.randint(1800, 3600)  # Increase sleep interval to 30-60 minutes
             next_cycle_time = time.time() + sleep_interval
             print(f"Sleeping for {sleep_interval} seconds. (App Version: {app_version})")
             time.sleep(sleep_interval)
             cycle_count += 1
 
-            if interaction_count >= break_after_actions:
-                if random.random() < long_break_probability:
-                    print(f"Taking a long break for {long_break_duration // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    time.sleep(long_break_duration)
-                else:
-                    print(f"Taking a break for {break_after_actions // 60} minutes to avoid being flagged. (App Version: {app_version})")
-                    time.sleep(break_after_actions)
+            if interaction_count >= 10:  # Break after 10 actions
+                print(f"Taking a longer break for 5 minutes after {interaction_count} interactions.")
+                time.sleep(300)  # 5-minute break
                 interaction_count = 0
 
         except Exception as e:
@@ -347,12 +335,12 @@ def scan_for_new_post(user_id, last_post_id, username):
 
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
-    new_comments = get_comments(media_id, 10)  # Get 10 new comments
+    new_comments = get_comments(media_id, 10)
     new_comments = [c for c in new_comments if c[0] != username]
     if new_comments:
         if username not in comments_data:
             comments_data[username] = []
-        comments_data[username].extend(new_comments)  # Append new comments
+        comments_data[username].extend(new_comments)
         print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(new_csv_data)
@@ -362,26 +350,14 @@ def handle_new_post(username, post_url, unique_id, media_id):
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
-            if profile_data and 'posts' in profile_data and len(profile_data['posts']) >= 2:  # Ensure there are at least 2 posts to analyze
-                captions = [post['caption'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                images = [post['media_url'] for post in profile_data['posts'][:2]]  # Limit to 2 posts
-                if captions and images:  # Check if captions and images are not None
-                    interests = analyze_interests(captions, images)
-                    profile_data['interests'] = interests
+            if profile_data and len(profile_data['posts']) >= 2:
+                captions = [post['caption'] for post in profile_data['posts'][:2]]
+                images = [post['media_url'] for post in profile_data['posts'][:2]]
+                interests = analyze_interests(captions, images)
+                profile_data['interests'] = interests
 
-                    commenters_interests[commenter_username] = interests
-                    print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
-
-                    # Emit the new interests to the client
-                    socketio.emit('new_interests', {
-                        'commenter': commenter_username,
-                        'interests': interests
-                    })
-
-                    # Clear large variables to free up memory
-                    del captions, images, profile_data, interests
-                else:
-                    print(f"Skipping {commenter_username} due to empty captions or images (App Version: {app_version})")
+                commenters_interests[commenter_username] = interests
+                print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
             else:
                 print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
@@ -418,12 +394,12 @@ def analyze_interests(captions, images):
             response = requests.post(
                 "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
                 headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-                json={"inputs": image_url}  # Pass the image URL directly for analysis
+                json={"inputs": image_url}
             )
             result = response.json()
-            if result and isinstance(result, list):
+            if result:
                 for res in result:
-                    if 'label' in res and res['label'] in candidate_labels:
+                    if res['label'] in candidate_labels:
                         interests[res['label']] += res['score']
             else:
                 print(f"Error: Unexpected response format for image analysis (App Version: {app_version})")
@@ -449,36 +425,29 @@ def fetch_instagram_profile(username):
         }
 
         medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
-        if medias:
-            for media in medias:
-                try:
-                    media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
-                except (IndexError, AttributeError) as e:
-                    print(f"Error processing media post for {username}: {e}")
-                    continue  # Skip this media post if there's an error
+        for media in medias:
+            try:
+                media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
+            except (IndexError, AttributeError) as e:
+                print(f"Error processing media post: {e}")
+                continue  # Skip this media post if there's an error
 
-                post = {
-                    'id': media.pk,
-                    'caption': media.caption_text,
-                    'media_type': media.media_type,
-                    'media_url': str(media_url),
-                    'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
-                    'likes': media.like_count,
-                    'comments': media.comment_count
-                }
-                profile_data['posts'].append(post)
+            post = {
+                'id': media.pk,
+                'caption': media.caption_text,
+                'media_type': media.media_type,
+                'media_url': str(media_url),
+                'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
+                'likes': media.like_count,
+                'comments': media.comment_count
+            }
+            profile_data['posts'].append(post)
 
         return profile_data
-    except JSONDecodeError as e:
-        print(f"JSONDecodeError: {e} while fetching data for {username}")
-        return None
-    except ClientError as e:
-        print(f"ClientError: {e} while fetching data for {username}")
-        return None
     except Exception as e:
-        print(f"Unexpected error: {e} while fetching data for {username}")
+        print(f"An error occurred while fetching data for {username}: {e}")
         return None
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
