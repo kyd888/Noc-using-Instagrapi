@@ -389,7 +389,6 @@ def handle_new_post(username, post_url, unique_id, media_id):
 
 def analyze_interests(captions, images):
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
-
     interests = {label: 0 for label in candidate_labels}
 
     print(f"Analyzing text interests (App Version: {app_version})")
@@ -419,12 +418,12 @@ def analyze_interests(captions, images):
             response = requests.post(
                 "https://api-inference.huggingface.co/models/google/vit-base-patch16-224",
                 headers={"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"},
-                json={"inputs": image_url}
+                json={"inputs": image_url}  # Pass the image URL directly for analysis
             )
             result = response.json()
-            if result:
+            if result and isinstance(result, list):
                 for res in result:
-                    if res['label'] in candidate_labels:
+                    if 'label' in res and res['label'] in candidate_labels:
                         interests[res['label']] += res['score']
             else:
                 print(f"Error: Unexpected response format for image analysis (App Version: {app_version})")
