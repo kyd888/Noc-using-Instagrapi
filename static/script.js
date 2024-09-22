@@ -106,13 +106,14 @@ $(document).ready(function() {
         }
     }
 
-    // Real-time updates for profile analysis
-    const socket = io.connect();
-    socket.on('analysis_start', function(data) {
-        alert(`Starting analysis for ${data.username}`);
-    });
+const socket = io.connect();
 
-    socket.on('analysis_complete', function(data) {
-        alert(`Analysis complete for ${data.username}`);
-    });
+// Listen for analysis start
+socket.on('analysis_start', function(data) {
+    console.log(`Starting analysis for ${data.username}`);
+});
+
+// Listen for analysis complete
+socket.on('analysis_complete', function(data) {
+    console.log(`Analysis complete for ${data.username}`);
 });
