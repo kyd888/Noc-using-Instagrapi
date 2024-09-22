@@ -6,6 +6,7 @@
     <title>Instagram Monitoring</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- SocketIO client -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
@@ -17,11 +18,13 @@
             <img id="profile-pic" src="" alt="Profile Picture">
             <span id="profile-username"></span>
         </div>
-        <button id="continue-session">Continue Session</button>
-        <button id="new-login">Login with New Account</button>
-    </div>
-    <div id="loading-indicator" style="display:none;">
-        <p>Continuing your session, please wait...</p>
+        <div id="buttons-container">
+            <button id="continue-session">Continue Session</button>
+            <button id="new-login">Login with New Account</button>
+        </div>
+        <div id="loading-message" style="display:none;">
+            <p>Loading session, please wait...</p>
+        </div>
     </div>
     <form id="login-form" style="display:none;">
         <label for="insta_username">Instagram Username</label>
@@ -52,6 +55,12 @@
                 {% endfor %}
             </div>
         </div>
+    </div>
+
+    <!-- Real-time profile analysis updates -->
+    <div id="profile-analysis-status">
+        <h2>Profile Analysis Status</h2>
+        <ul id="analysis-status-list"></ul>
     </div>
 </body>
 </html>
