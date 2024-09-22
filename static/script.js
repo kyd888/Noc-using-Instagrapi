@@ -1,8 +1,5 @@
 $(document).ready(function() {
     let monitoring = false;
-    const socket = io();  // Initialize SocketIO connection
-
-    checkSavedSession();
 
     function checkSavedSession() {
         $.get('/check_saved_session', function(response) {
@@ -94,6 +91,7 @@ $(document).ready(function() {
                     updateCommentersInterestsList(data.commenters_interests);
                     $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
+
                 fetchCommentersInterests();
             }, 5000);
         }
@@ -108,13 +106,13 @@ $(document).ready(function() {
         }
     }
 
-    // SocketIO event listeners for real-time profile analysis updates
+    // Real-time updates for profile analysis
+    const socket = io.connect();
     socket.on('analysis_start', function(data) {
-        $('#analysis-status-list').append(`<li>Analyzing profile: ${data.username}</li>`);
+        alert(`Starting analysis for ${data.username}`);
     });
 
     socket.on('analysis_complete', function(data) {
-        $('#analysis-status-list').append(`<li>Analysis complete: ${data.username}</li>`);
+        alert(`Analysis complete for ${data.username}`);
     });
 });
-
