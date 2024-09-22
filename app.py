@@ -86,5 +86,6 @@ def debug_test_profile():
     return f"Analysis started for {test_username}. Check logs for results."
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Use the PORT environment variable provided by Render
-    socketio.run(app, host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT environment variable
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)  # No need to specify async_mode
+
