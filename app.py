@@ -146,6 +146,7 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
+        
 def login_with_retries(client, username, password, retries=5, initial_delay=10):
     delay = initial_delay
     for i in range(retries):
@@ -437,42 +438,64 @@ def analyze_interests(captions, images):
     
 def fetch_instagram_profile(username):
     try:
-        user_info = client.user_info_by_username(username)
-        user_id = user_info.pk
-
-        profile_data = {
-            'username': user_info.username,
-            'full_name': user_info.full_name,
-            'biography': user_info.biography,
-            'media_count': user_info.media_count,
-            'follower_count': user_info.follower_count,
-            'following_count': user_info.following_count,
-            'posts': []
-        }
-
-        medias = client.user_medias(user_id, 10)  # Fetch latest 10 posts
-        for media in medias:
+        # Make the request to fetch the user's data
+        response = requests.get(f"https://www.instagram.com/{username}/?__a=1&__d=dis")
+        
+        # Check if the response is valid and is in JSON format
+        if response.status_code == 200:
             try:
-                media_url = media.thumbnail_url if media.media_type == 1 else media.resources[0].thumbnail_url
-            except (IndexError, AttributeError) as e:
-                print(f"Error processing media post: {e}")
-                continue  # Skip this media post if there's an error
+                profile_data = response.json()  # Attempt to parse the response as JSON
+                user_info = profile_data.get("graphql", {}).get("user", {})
+                user_id = user_info.get("id", None)
+                
+                if user_id:
+                    print(f"User ID for {username} is {user_id}")
+                    return extract_profile_data(user_info)  # Extract and return profile data
+                else:
+                    print(f"No valid user ID found for {username}. Profile might be private or restricted.")
+                    return None
+            except json.JSONDecodeError:
+                print(f"JSONDecodeError: Failed to parse JSON for {username}")
+                return None
+        else:
+            print(f"Received non-200 status code: {response.status_code} for {username}")
+            return None
 
-            post = {
-                'id': media.pk,
-                'caption': media.caption_text,
-                'media_type': media.media_type,
-                'media_url': str(media_url) if media_url else None,
-                'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
-                'likes': media.like_count,
-                'comments': media.comment_count
-            }
-            profile_data['posts'].append(post)
-
-        return profile_data
-    except Exception as e:
-        print(f"An error occurred while fetching data for {username}: {e}")
+    except requests.RequestException as e:
+        print(f"RequestException: An error occurred while fetching data for {username}: {e}")
         return None
+
+def extract_profile_data(user_info):
+    """Extracts and formats the profile data from the user_info dictionary."""
+    profile_data = {
+        'username': user_info.get('username', ''),
+        'full_name': user_info.get('full_name', ''),
+        'biography': user_info.get('biography', ''),
+        'media_count': user_info.get('edge_owner_to_timeline_media', {}).get('count', 0),
+        'follower_count': user_info.get('edge_followed_by', {}).get('count', 0),
+        'following_count': user_info.get('edge_follow', {}).get('count', 0),
+        'posts': []
+    }
+
+    # Extract posts if available
+    edges = user_info.get('edge_owner_to_timeline_media', {}).get('edges', [])
+    for edge in edges[:10]:  # Limit to the latest 10 posts
+        node = edge.get('node', {})
+        media_url = node.get('display_url', None)
+        caption = node.get('edge_media_to_caption', {}).get('edges', [{}])[0].get('node', {}).get('text', '')
+        
+        post = {
+            'id': node.get('id', ''),
+            'caption': caption,
+            'media_type': node.get('typename', ''),
+            'media_url': media_url,
+            'timestamp': node.get('taken_at_timestamp', ''),
+            'likes': node.get('edge_liked_by', {}).get('count', 0),
+            'comments': node.get('edge_media_to_comment', {}).get('count', 0)
+        }
+        profile_data['posts'].append(post)
+
+    return profile_data
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
