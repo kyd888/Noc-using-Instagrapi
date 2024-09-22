@@ -55,6 +55,12 @@ def add_delay(min_seconds=10, max_seconds=30):
 @app.route('/')
 def index():
     return render_template('index.html', version=app_version, csv_data=csv_data_global, commenters_interests=commenters_interests)
+    
+# Emit a message when the profile analysis starts
+def start_profile_analysis(username):
+    socketio.emit('analysis_start', {'username': username})  # Notify the client that analysis has started
+    time.sleep(3)  # Simulate profile analysis delay (replace with actual analysis logic)
+    socketio.emit('analysis_complete', {'username': username})  # Notify the client that analysis is complete
 
 @app.route('/check_saved_session', methods=['GET'])
 def check_saved_session():
@@ -77,7 +83,7 @@ def check_saved_session():
                 print(f"Error fetching profile picture: {e}")
                 return jsonify({'has_saved_session': False})
     return jsonify({'has_saved_session': False})
-
+    
 @app.route('/continue_session', methods=['POST'])
 def continue_session():
     global client, s3, bucket_name
@@ -388,7 +394,14 @@ def handle_new_post(username, post_url, unique_id, media_id):
                 print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
         print(f"No new comments found for post {unique_id} (App Version: {app_version})")
-
+@app.route('/analyze_profile', methods=['POST'])
+def analyze_profile():
+    username = request.form['username']
+    # Start profile analysis in the background
+    thread = Thread(target=start_profile_analysis, args=(username,))
+    thread.start()
+    return jsonify({'status': f'Analysis started for {username}'})
+    
 def analyze_interests(captions, images):
     candidate_labels = ["fitness", "travel", "food", "music", "fashion", "technology", "sports", "movies", "books", "art"]
     interests = {label: 0 for label in candidate_labels}
@@ -497,5 +510,5 @@ def extract_profile_data(user_info):
     return profile_data
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
-    socketio.run(app, host='0.0.0.0', port=port)  # Removed 'allow_unsafe_werkzeug'
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT environment variable
+    socketio.run(app, host='0.0.0.0', port=port)
