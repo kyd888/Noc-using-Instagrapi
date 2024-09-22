@@ -15,10 +15,11 @@ import openai
 import base64
 from datetime import datetime
 from flask_socketio import SocketIO, emit
+import json
 
 # Initialize Flask and SocketIO
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Replace with your secret key
 socketio = SocketIO(app)
 
 # Version number
@@ -353,8 +354,6 @@ def scan_for_new_post(user_id, last_post_id, username):
         return latest_post, post_url, unique_id
     return None, None, None
 
-import json
-
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
     new_comments = get_comments(media_id, 10)  # Get 10 new comments
@@ -500,4 +499,3 @@ def extract_profile_data(user_info):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))  # Use the PORT environment variable provided by Render
     socketio.run(app, host='0.0.0.0', port=port)  # Removed 'allow_unsafe_werkzeug'
-
