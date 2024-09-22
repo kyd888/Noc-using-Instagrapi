@@ -3,59 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Monitoring</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Instagram Profile Analysis</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
-    </div>
-    <div id="continue-session-section" style="display:none;">
-        <div id="profile-info">
-            <img id="profile-pic" src="" alt="Profile Picture">
-            <span id="profile-username"></span>
-        </div>
-        <div id="buttons-container">
-            <button id="continue-session">Continue Session</button>
-            <button id="new-login">Login with New Account</button>
-        </div>
-        <div id="loading-message" style="display:none;">
-            <p>Loading session, please wait...</p>
-        </div>
-    </div>
-    <form id="login-form" style="display:none;">
-        <label for="insta_username">Instagram Username</label>
-        <input type="text" id="insta_username" name="insta_username" required>
-        <label for="insta_password">Instagram Password</label>
-        <input type="password" id="insta_password" name="insta_password" required>
-        <button type="submit">Login</button>
+    <h1>Instagram Profile Analysis</h1>
+    
+    <form id="profile-form">
+        <input type="text" id="username" placeholder="Enter Instagram username" required>
+        <button type="submit">Analyze Profile</button>
     </form>
-    <div id="main-content" style="display:none;">
-        <div id="left-panel">
-            <form id="monitor-form">
-                <label for="target_usernames">Target Usernames (comma-separated)</label>
-                <input type="text" id="target_usernames" name="target_usernames" required>
-                <button id="start-monitoring" type="submit">Start Monitoring</button>
-                <button id="stop-monitoring" type="button" style="display:none;">Stop Monitoring</button>
-            </form>
-        </div>
-        <div id="right-panel">
-            <h2>Commenters' Interests</h2>
-            <div id="commenters-interests-list">
-                {% for commenter, interests in commenters_interests.items() %}
-                    <h3>{{ commenter }}</h3>
-                    <ul>
-                        {% for interest, score in interests %}
-                            <li>{{ interest }}: {{ score }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+    
+    <div id="status-message"></div>
+
+    <script>
+        $(document).ready(function() {
+            var socket = io();
+
+            // Handle form submission
+            $('#profile-form').submit(function(event) {
+                event.preventDefault();
+                const username = $('#username').val();
+
+                // Make a POST request to start the analysis
+                $.post('/analyze_profile', { username: username }, function(response) {
+                    $('#status-message').text(response.status);
+                });
+            });
+
+            // Listen for the 'analysis_start' event
+            socket.on('analysis_start', function(data) {
+                $('#status-message').text('Analyzing profile: ' + data.username + '...');
+            });
+
+            // Listen for the 'analysis_complete' event
+            socket.on('analysis_complete', function(data) {
+                $('#status-message').text('Profile analysis completed for: ' + data.username);
+            });
+        });
+    </script>
 </body>
 </html>
-
 
