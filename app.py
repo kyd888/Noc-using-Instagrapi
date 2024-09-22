@@ -460,7 +460,7 @@ def fetch_instagram_profile(username):
     except requests.RequestException as e:
         print(f"RequestException: An error occurred while fetching data for {username}: {e}")
         return None
-
+        
 def extract_profile_data(user_info):
     """Extracts and formats the profile data from the user_info dictionary."""
     profile_data = {
