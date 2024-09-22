@@ -6,26 +6,19 @@
     <title>Instagram Monitoring</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- SocketIO client -->
+    <script src="/socket.io/socket.io.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
-    </div>
     <div id="continue-session-section" style="display:none;">
         <div id="profile-info">
             <img id="profile-pic" src="" alt="Profile Picture">
             <span id="profile-username"></span>
         </div>
-        <div id="buttons-container">
-            <button id="continue-session">Continue Session</button>
-            <button id="new-login">Login with New Account</button>
-        </div>
-        <div id="loading-message" style="display:none;">
-            <p>Loading session, please wait...</p>
-        </div>
+        <button id="continue-session">Continue Session</button>
+        <button id="new-login">Login with New Account</button>
     </div>
+
     <form id="login-form" style="display:none;">
         <label for="insta_username">Instagram Username</label>
         <input type="text" id="insta_username" name="insta_username" required>
@@ -33,6 +26,7 @@
         <input type="password" id="insta_password" name="insta_password" required>
         <button type="submit">Login</button>
     </form>
+
     <div id="main-content" style="display:none;">
         <div id="left-panel">
             <form id="monitor-form">
@@ -44,23 +38,8 @@
         </div>
         <div id="right-panel">
             <h2>Commenters' Interests</h2>
-            <div id="commenters-interests-list">
-                {% for commenter, interests in commenters_interests.items() %}
-                    <h3>{{ commenter }}</h3>
-                    <ul>
-                        {% for interest, score in interests %}
-                            <li>{{ interest }}: {{ score }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endfor %}
-            </div>
+            <div id="commenters-interests-list"></div>
         </div>
-    </div>
-
-    <!-- Real-time profile analysis updates -->
-    <div id="profile-analysis-status">
-        <h2>Profile Analysis Status</h2>
-        <ul id="analysis-status-list"></ul>
     </div>
 </body>
 </html>
