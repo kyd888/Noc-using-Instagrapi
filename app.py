@@ -352,15 +352,19 @@ def scan_for_new_post(user_id, last_post_id, username):
         return latest_post, post_url, unique_id
     return None, None, None
 
+import json
+
 def handle_new_post(username, post_url, unique_id, media_id):
     global comments_data, csv_data_global, commenters_interests
-    new_comments = get_comments(media_id, 10)
+    new_comments = get_comments(media_id, 10)  # Get 10 new comments
     new_comments = [c for c in new_comments if c[0] != username]
+    
     if new_comments:
         if username not in comments_data:
             comments_data[username] = []
-        comments_data[username].extend(new_comments)
+        comments_data[username].extend(new_comments)  # Append new comments
         print(f"Stored new comments for post {unique_id}: {new_comments} (App Version: {app_version})")
+        
         new_csv_data = [{'username': username, 'post_id': unique_id, 'commenter': c[0], 'comment': c[1], 'time': c[2]} for c in new_comments]
         csv_data_global.extend(new_csv_data)
         write_to_s3(csv_data_global, 'NOC_data3.csv')
@@ -369,14 +373,17 @@ def handle_new_post(username, post_url, unique_id, media_id):
         for comment in new_comments:
             commenter_username = comment[0]
             profile_data = fetch_instagram_profile(commenter_username)
+            
             if profile_data and len(profile_data['posts']) >= 2:
-                captions = [post['caption'] for post in profile_data['posts'][:2]]
-                images = [post['media_url'] for post in profile_data['posts'][:2]]
+                captions = [post['caption'] for post in profile_data['posts'][:2] if 'caption' in post]  # Add validation
+                images = [post['media_url'] for post in profile_data['posts'][:2] if 'media_url' in post]  # Add validation
+                
                 interests = analyze_interests(captions, images)
                 profile_data['interests'] = interests
 
                 commenters_interests[commenter_username] = interests
                 print(f"Interests for {commenter_username}: {json.dumps(interests, indent=4)} (App Version: {app_version})")
+                
             else:
                 print(f"Skipping {commenter_username} due to insufficient posts or private account (App Version: {app_version})")
     else:
@@ -397,7 +404,7 @@ def analyze_interests(captions, images):
                 json={"inputs": caption, "parameters": {"candidate_labels": candidate_labels}}
             )
             result = response.json()
-            if result and 'labels' in result and 'scores' in result:
+            if 'labels' in result and 'scores' in result:
                 for label, score in zip(result['labels'], result['scores']):
                     interests[label] += score
             else:
@@ -416,10 +423,10 @@ def analyze_interests(captions, images):
                 json={"inputs": image_url}
             )
             result = response.json()
-            if result:
+            if isinstance(result, list):
                 for res in result:
-                    if res['label'] in candidate_labels:
-                        interests[res['label']] += res['score']
+                    if res.get('label') in candidate_labels:
+                        interests[res['label']] += res.get('score', 0)
             else:
                 print(f"Error: Unexpected response format for image analysis (App Version: {app_version})")
         except Exception as e:
@@ -427,7 +434,7 @@ def analyze_interests(captions, images):
 
     sorted_interests = sorted(interests.items(), key=lambda item: item[1], reverse=True)
     return sorted_interests
-
+    
 def fetch_instagram_profile(username):
     try:
         user_info = client.user_info_by_username(username)
@@ -455,7 +462,7 @@ def fetch_instagram_profile(username):
                 'id': media.pk,
                 'caption': media.caption_text,
                 'media_type': media.media_type,
-                'media_url': str(media_url),
+                'media_url': str(media_url) if media_url else None,
                 'timestamp': media.taken_at.isoformat() if isinstance(media.taken_at, datetime) else str(media.taken_at),
                 'likes': media.like_count,
                 'comments': media.comment_count
