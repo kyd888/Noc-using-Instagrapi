@@ -146,7 +146,6 @@ def login():
     except Exception as e:
         print(f"Login failed: {e} (App Version: {app_version})")
         return jsonify({'status': f'Login failed: {str(e)}', 'version': app_version})
-
 def login_with_retries(client, username, password, retries=5, initial_delay=10):
     delay = initial_delay
     for i in range(retries):
@@ -154,13 +153,33 @@ def login_with_retries(client, username, password, retries=5, initial_delay=10):
             client.login(username, password)
             return
         except ClientError as e:
-            if 'Please wait a few minutes before you try again' in str(e):
+            if 'challenge_required' in str(e):
+                print(f"Challenge required for {username}. Handling challenge...")
+                handle_challenge(client)
+            elif 'Please wait a few minutes before you try again' in str(e):
                 print(f"Rate limit hit during login. Retrying in {delay} seconds. (App Version: {app_version})")
                 time.sleep(delay + random.uniform(0, delay / 2))  # Add jitter to delay
                 delay *= 2  # Exponential backoff
             else:
                 raise e
     raise Exception("Maximum retries reached for login")
+
+def handle_challenge(client):
+    """Handle Instagram's challenge process (e.g., email or SMS)."""
+    try:
+        challenge_info = client.challenge_resolve()
+        # Handle the challenge choice (e.g., email, SMS)
+        if challenge_info.get("step_name") == "select_verify_method":
+            choice = challenge_info['step_data']['choice']  # "1" for email, "0" for SMS
+            client.challenge_send_verification_code(choice)
+            print(f"Enter code (6 digits) for {client.username} (ChallengeChoice.{choice}):")
+            code = input("Enter the received code: ").strip()  # Replace this with automatic code retrieval logic if possible
+            client.challenge_verify_code(code)
+        elif challenge_info.get("step_name") == "verify_code":
+            code = input(f"Enter the received code for {client.username}: ").strip()
+            client.challenge_verify_code(code)
+    except Exception as e:
+        print(f"Error handling challenge: {e}")
 
 @app.route('/start_monitoring', methods=['POST'])
 def start_monitoring():
