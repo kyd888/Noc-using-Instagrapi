@@ -299,22 +299,6 @@ def get_comments(media_id, count=10):
         print(f"Error fetching comments for media ID {media_id}: {e} (App Version: {app_version})")
         return []
 
-def write_to_s3(data, filename):
-    df = pd.DataFrame(data)
-    csv_buffer = StringIO()
-    df.to_csv(csv_buffer, index=False)
-    try:
-        print(f"Attempting to write data to S3 bucket {bucket_name} (App Version: {app_version})")
-        print(f"Data being written:\n{df}")  # Log the data being written
-        s3.put_object(Bucket=bucket_name, Key=filename, Body=csv_buffer.getvalue())
-        print(f"Data written to S3 bucket {bucket_name} (App Version: {app_version})")
-    except NoCredentialsError:
-        print("Credentials not available")
-    except BotoClientError as e:
-        print(f"Boto Client Error: {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
 def post_monitoring_loop(user_id, username):
     global monitoring, last_refresh_time, refresh_messages, csv_data_global, next_cycle_time, commenters_interests
     last_post_id = None
