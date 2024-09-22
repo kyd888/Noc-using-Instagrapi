@@ -1,5 +1,6 @@
 $(document).ready(function() {
     let monitoring = false;
+    const socket = io();  // Initialize SocketIO connection
 
     checkSavedSession();
 
@@ -10,33 +11,20 @@ $(document).ready(function() {
                     $('#profile-pic').attr('src', 'data:image/jpeg;base64,' + response.profile_pic_base64);
                 }
                 $('#profile-username').text(response.username);
-                $('#continue-session-section').show();
                 $('#login-form').hide();
-            } else {
-                $('#continue-session-section').hide();
-                $('#login-form').show();
+                $('#continue-session-section').show();
             }
         });
     }
 
     $('#continue-session').click(function() {
-        $('#buttons-container').hide();
-        $('#loading-message').show();
-
         $.post('/continue_session', function(response) {
             alert(response.status);
             if (response.status === 'Session restored successfully') {
-                $('#loading-message').hide();
+                $('#continue-session-section').hide();
                 $('#main-content').show();
                 fetchCommentersInterests();
-            } else {
-                $('#loading-message').hide();
-                $('#buttons-container').show(); // Show the buttons again if the session restoration fails
             }
-        }).fail(function() {
-            $('#loading-message').hide();
-            $('#buttons-container').show(); // Show the buttons again if the session restoration fails
-            alert("An error occurred while continuing the session.");
         });
     });
 
@@ -106,7 +94,6 @@ $(document).ready(function() {
                     updateCommentersInterestsList(data.commenters_interests);
                     $('#countdown').text(`${data.seconds_until_next_cycle} seconds until next monitoring cycle`);
                 });
-
                 fetchCommentersInterests();
             }, 5000);
         }
@@ -120,5 +107,14 @@ $(document).ready(function() {
             $('#commenters-interests-list').append(commenterElement);
         }
     }
+
+    // SocketIO event listeners for real-time profile analysis updates
+    socket.on('analysis_start', function(data) {
+        $('#analysis-status-list').append(`<li>Analyzing profile: ${data.username}</li>`);
+    });
+
+    socket.on('analysis_complete', function(data) {
+        $('#analysis-status-list').append(`<li>Analysis complete: ${data.username}</li>`);
+    });
 });
 
