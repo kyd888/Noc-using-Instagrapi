@@ -1,47 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Monitoring</title>
+    <title>Instagram Profile Analysis</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </head>
 <body>
-    <div id="continue-session-section" style="display:none;">
-        <div id="profile-info">
-            <img id="profile-pic" src="" alt="Profile Picture">
-            <span id="profile-username"></span>
-        </div>
-        <button id="continue-session">Continue Session</button>
-        <button id="new-login">Login with New Account</button>
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
     </div>
 
-    <form id="login-form" style="display:none;">
-        <label for="insta_username">Instagram Username</label>
-        <input type="text" id="insta_username" name="insta_username" required>
-        <label for="insta_password">Instagram Password</label>
-        <input type="password" id="insta_password" name="insta_password" required>
-        <button type="submit">Login</button>
-    </form>
-
-    <div id="main-content" style="display:none;">
-        <div id="left-panel">
-            <form id="monitor-form">
-                <label for="target_usernames">Target Usernames (comma-separated)</label>
-                <input type="text" id="target_usernames" name="target_usernames" required>
-                <button id="start-monitoring" type="submit">Start Monitoring</button>
-                <button id="stop-monitoring" type="button" style="display:none;">Stop Monitoring</button>
-            </form>
-        </div>
-        <div id="right-panel">
-            <h2>Commenters' Interests</h2>
-            <div id="commenters-interests-list"></div>
-        </div>
+    <div id="search-section">
+        <h2>Search Instagram User</h2>
+        <form id="search-form">
+            <label for="username">Instagram Username</label>
+            <input type="text" id="username" name="username" required>
+            <button type="submit">Search</button>
+        </form>
     </div>
+
+    <div id="analysis-results" style="display:none;">
+        <h3>Profile Analysis Results</h3>
+        <p id="result-text"></p>
+    </div>
+
 </body>
 </html>
